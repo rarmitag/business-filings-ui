@@ -3,14 +3,12 @@ import Vue from 'vue'
 import Vuetify from 'vuetify'
 import Vuelidate from 'vuelidate'
 import sinon from 'sinon'
-import { createLocalVue, shallowMount, mount } from '@vue/test-utils'
+import { createLocalVue, shallowMount, mount, Wrapper } from '@vue/test-utils'
 import flushPromises from 'flush-promises'
 import axios from '@/axios-auth'
 import store from '@/store/store'
 import StandaloneOfficeAddressFiling from '@/views/StandaloneOfficeAddressFiling.vue'
-import { OfficeAddresses } from '@/components/common'
-import Certify from '@/components/AnnualReport/Certify.vue'
-import StaffPayment from '@/components/AnnualReport/StaffPayment.vue'
+import { Certify, OfficeAddresses, StaffPayment } from '@/components/common'
 import VueRouter from 'vue-router'
 import mockRouter from './mockRouter'
 import { BAD_REQUEST } from 'http-status-codes'
@@ -25,7 +23,7 @@ Vue.use(Vuelidate)
 // ref: https://github.com/vuejs/vue-test-utils/issues/532
 Vue.config.silent = true
 
-let vuetify = new Vuetify({})
+const vuetify = new Vuetify({})
 
 const sampleDeliveryAddress = {
   'streetAddress': 'delivery street address',
@@ -71,13 +69,8 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     const $route = { params: { id: 0 } } // new filing id
     const wrapper = shallowMount(StandaloneOfficeAddressFiling, { store, mocks: { $route } })
 
-    // component should be displayed when totalFee > 0
-    wrapper.setData({ totalFee: 1 })
+    // component should be displayed
     expect(wrapper.find(StaffPayment).exists()).toBe(true)
-
-    // component should not be displayed when totalFee <= 0
-    wrapper.setData({ totalFee: 0 })
-    expect(wrapper.find(StaffPayment).exists()).toBe(false)
 
     // reset store
     // NB: this is important for subsequent tests
@@ -95,7 +88,7 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
     vm.officeAddressFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(true)
@@ -112,7 +105,7 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
     vm.officeAddressFormValid = false
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(false)
@@ -129,7 +122,7 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = false
     vm.officeAddressFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(false)
@@ -145,7 +138,8 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     // set properties
     vm.certifyFormValid = true
     vm.officeAddressFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
+
     // set properties to make only staff payment invalid
     store.state.keycloakRoles = ['staff']
     vm.totalFee = 1
@@ -188,7 +182,7 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
     vm.officeAddressFormValid = true
-    vm.filingData = [] // no data
+    store.state.filingData = [] // no data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(false)
@@ -222,7 +216,7 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
     vm.officeAddressFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that button is enabled
     expect(wrapper.find('#coa-file-pay-btn').attributes('disabled')).toBeUndefined()
@@ -258,7 +252,7 @@ describe('Standalone Office Address Filing - Part 1 - UI', () => {
     vm.staffPaymentFormValid = false
     vm.certifyFormValid = false
     vm.officeAddressFormValid = false
-    vm.filingData = [] // dummy data
+    store.state.filingData = [] // no data
 
     // confirm that button is disabled
     expect(wrapper.find('#coa-file-pay-btn').attributes('disabled')).toBe('disabled')
@@ -311,36 +305,39 @@ describe('Standalone Office Address Filing - Part 2 - Resuming', () => {
     // mock "fetch a draft filing" endpoint
     sinon.stub(axios, 'get').withArgs('CP0001191/filings/123')
       .returns(new Promise((resolve) => resolve({
-        data:
-          {
-            'filing': {
-              'changeOfAddress': {
-                'offices': {
-                  'registeredOffice': {
-                    'deliveryAddress': sampleDeliveryAddress,
-                    'mailingAddress': sampleMailingAddress
-                  }
+        data: {
+          filing: {
+            changeOfAddress: {
+              offices: {
+                registeredOffice: {
+                  deliveryAddress: sampleDeliveryAddress,
+                  mailingAddress: sampleMailingAddress
                 }
-              },
-              'business': {
-                'cacheId': 1,
-                'foundingDate': '2007-04-08',
-                'identifier': 'CP0001191',
-                'lastLedgerTimestamp': '2019-04-15T20:05:49.068272+00:00',
-                'legalName': 'Legal Name - CP0001191'
-              },
-              'header': {
-                'name': 'changeOfAddress',
-                'date': '2017-06-06',
-                'submitter': 'cp0001191',
-                'status': 'DRAFT',
-                'certifiedBy': 'Full Name',
-                'email': 'no_one@never.get',
-                'filingId': 123,
-                'routingSlipNumber': '456'
               }
+            },
+            business: {
+              cacheId: 1,
+              foundingDate: '2007-04-08',
+              identifier: 'CP0001191',
+              lastLedgerTimestamp: '2019-04-15T20:05:49.068272+00:00',
+              legalName: 'Legal Name - CP0001191'
+            },
+            header: {
+              name: 'changeOfAddress',
+              date: '2017-06-06',
+              submitter: 'cp0001191',
+              status: 'DRAFT',
+              certifiedBy: 'Full Name',
+              email: 'no_one@never.get',
+              filingId: 123,
+              routingSlipNumber: '456',
+              // NB: it's not valid to have both "priority" and "waiveFees" true
+              // but we're just testing that these values are restored properly
+              priority: true,
+              waiveFees: true
             }
           }
+        }
       })))
   })
 
@@ -348,33 +345,33 @@ describe('Standalone Office Address Filing - Part 2 - Resuming', () => {
     sinon.restore()
   })
 
-  it('fetches a draft Standalone Office Address filing', done => {
+  it('fetches a draft Standalone Office Address filing', async () => {
     const $route = { params: { id: '123' } } // draft filing id
     const wrapper = shallowMount(StandaloneOfficeAddressFiling, { store, mocks: { $route }, vuetify })
     const vm = wrapper.vm as any
+    await flushPromises()
 
-    Vue.nextTick(() => {
-      // verify that Certified By was restored
-      expect(vm.certifiedBy).toBe('Full Name')
-      expect(vm.isCertified).toBe(false)
+    // verify that Certified By was restored
+    expect(vm.certifiedBy).toBe('Full Name')
+    expect(vm.isCertified).toBe(false)
 
-      // verify that Routing Slip Number was restored
-      expect(vm.routingSlipNumber).toBe('456')
+    // verify that Staff Payment fields were restored
+    expect(vm.routingSlipNumber).toBe('456')
+    expect(vm.isPriority).toBe(true)
+    expect(vm.isWaiveFees).toBe(true)
 
-      // verify that we stored the Filing ID
-      expect(+vm.filingId).toBe(123)
+    // verify that we stored the Filing ID
+    expect(+vm.filingId).toBe(123)
 
-      // verify that changed addresses were restored
-      expect(vm.addresses.registeredOffice.deliveryAddress.streetAddress).toBe('delivery street address')
-      expect(vm.addresses.registeredOffice.mailingAddress.streetAddress).toBe('mailing street address')
+    // verify that changed addresses were restored
+    expect(vm.addresses.registeredOffice.deliveryAddress.streetAddress).toBe('delivery street address')
+    expect(vm.addresses.registeredOffice.mailingAddress.streetAddress).toBe('mailing street address')
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
   })
 })
 
-describe('Standalone Office Address Filing - Part 2B (BCOMP) - Resuming', () => {
+describe('Standalone Office Address Filing - Part 2B - Resuming (BCOMP)', () => {
   beforeEach(() => {
     // init store
     store.state.entityIncNo = 'BC0001191'
@@ -384,40 +381,43 @@ describe('Standalone Office Address Filing - Part 2B (BCOMP) - Resuming', () => 
     // mock "fetch a draft filing" endpoint
     sinon.stub(axios, 'get').withArgs('BC0001191/filings/123')
       .returns(new Promise((resolve) => resolve({
-        data:
-          {
-            'filing': {
-              'changeOfAddress': {
-                'offices': {
-                  'registeredOffice': {
-                    'deliveryAddress': sampleDeliveryAddress,
-                    'mailingAddress': sampleMailingAddress
-                  },
-                  'recordsOffice': {
-                    'deliveryAddress': sampleDeliveryAddress,
-                    'mailingAddress': sampleMailingAddress
-                  }
+        data: {
+          filing: {
+            changeOfAddress: {
+              offices: {
+                registeredOffice: {
+                  deliveryAddress: sampleDeliveryAddress,
+                  mailingAddress: sampleMailingAddress
+                },
+                recordsOffice: {
+                  deliveryAddress: sampleDeliveryAddress,
+                  mailingAddress: sampleMailingAddress
                 }
-              },
-              'business': {
-                'cacheId': 1,
-                'foundingDate': '2007-04-08',
-                'identifier': 'BC0001191',
-                'lastLedgerTimestamp': '2019-04-15T20:05:49.068272+00:00',
-                'legalName': 'Legal Name - BC0001191'
-              },
-              'header': {
-                'name': 'changeOfAddress',
-                'date': '2017-06-06',
-                'submitter': 'BC0001191',
-                'status': 'DRAFT',
-                'certifiedBy': 'Full Name',
-                'email': 'no_one@never.get',
-                'filingId': 123,
-                'routingSlipNumber': '456'
               }
+            },
+            business: {
+              cacheId: 1,
+              foundingDate: '2007-04-08',
+              identifier: 'BC0001191',
+              lastLedgerTimestamp: '2019-04-15T20:05:49.068272+00:00',
+              legalName: 'Legal Name - BC0001191'
+            },
+            header: {
+              name: 'changeOfAddress',
+              date: '2017-06-06',
+              submitter: 'BC0001191',
+              status: 'DRAFT',
+              certifiedBy: 'Full Name',
+              email: 'no_one@never.get',
+              filingId: 123,
+              routingSlipNumber: '456',
+              // NB: it's not valid to have both "priority" and "waiveFees" true
+              // but we're just testing that these values are restored properly
+              priority: true,
+              waiveFees: true
             }
           }
+        }
       })))
   })
 
@@ -425,29 +425,29 @@ describe('Standalone Office Address Filing - Part 2B (BCOMP) - Resuming', () => 
     sinon.restore()
   })
 
-  it('fetches a draft Standalone Office Address filing', done => {
+  it('fetches a draft Standalone Office Address filing', async () => {
     const $route = { params: { id: '123' } } // draft filing id
     const wrapper = shallowMount(StandaloneOfficeAddressFiling, { store, mocks: { $route }, vuetify })
     const vm = wrapper.vm as any
+    await flushPromises()
 
-    Vue.nextTick(() => {
-      // verify that Certified By was restored
-      expect(vm.certifiedBy).toBe('Full Name')
-      expect(vm.isCertified).toBe(false)
+    // verify that Certified By was restored
+    expect(vm.certifiedBy).toBe('Full Name')
+    expect(vm.isCertified).toBe(false)
 
-      // verify that Routing Slip Number was restored
-      expect(vm.routingSlipNumber).toBe('456')
+    // verify that Staff Payment fields were restored
+    expect(vm.routingSlipNumber).toBe('456')
+    expect(vm.isPriority).toBe(true)
+    expect(vm.isWaiveFees).toBe(true)
 
-      // verify that we stored the Filing ID
-      expect(+vm.filingId).toBe(123)
+    // verify that we stored the Filing ID
+    expect(+vm.filingId).toBe(123)
 
-      // verify that changed addresses were restored
-      expect(vm.addresses.registeredOffice.deliveryAddress.streetAddress).toBe('delivery street address')
-      expect(vm.addresses.registeredOffice.mailingAddress.streetAddress).toBe('mailing street address')
+    // verify that changed addresses were restored
+    expect(vm.addresses.registeredOffice.deliveryAddress.streetAddress).toBe('delivery street address')
+    expect(vm.addresses.registeredOffice.mailingAddress.streetAddress).toBe('mailing street address')
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
   })
 })
 
@@ -470,10 +470,10 @@ describe('Standalone Office Address Filing - Part 3 - Submitting', () => {
     store.state.entityName = 'Legal Name - CP0001191'
     store.state.entityType = EntityTypes.COOP
 
-    let s = sinon.stub(axios, 'get')
+    let sinonAxiosGet = sinon.stub(axios, 'get')
 
     // mock "fetch a draft filing" endpoint
-    s.withArgs('CP0001191/filings/123')
+    sinonAxiosGet.withArgs('CP0001191/filings/123')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -507,7 +507,7 @@ describe('Standalone Office Address Filing - Part 3 - Submitting', () => {
           }
       })))
 
-    s.withArgs('CP0001191/tasks')
+    sinonAxiosGet.withArgs('CP0001191/tasks')
       .returns(new Promise((resolve) => resolve({
         data: {
           'tasks': [
@@ -636,7 +636,7 @@ describe('Standalone Office Address Filing - Part 3 - Submitting', () => {
     vm.officeAddressFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
     expect(vm.validated).toEqual(true)
 
     // make sure a fee is required
@@ -695,7 +695,7 @@ describe('Standalone Office Address Filing - Part 3 - Submitting', () => {
     vm.officeAddressFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
     expect(vm.validated).toEqual(true)
 
     // make sure a fee is required
@@ -727,7 +727,7 @@ describe('Standalone Office Address Filing - Part 3 - Submitting', () => {
   })
 })
 
-describe('Standalone Office Address Filing - Part 3B (BCOMP) - Submitting', () => {
+describe('Standalone Office Address Filing - Part 3B - Submitting (BCOMP)', () => {
   const { assign } = window.location
 
   beforeAll(() => {
@@ -746,10 +746,10 @@ describe('Standalone Office Address Filing - Part 3B (BCOMP) - Submitting', () =
     store.state.entityName = 'Legal Name - BC0001191'
     store.state.entityType = EntityTypes.BCOMP
 
-    let s = sinon.stub(axios, 'get')
+    let sinonAxiosGet = sinon.stub(axios, 'get')
 
     // mock "fetch a draft filing" endpoint
-    s.withArgs('BC0001191/filings/123')
+    sinonAxiosGet.withArgs('BC0001191/filings/123')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -787,7 +787,7 @@ describe('Standalone Office Address Filing - Part 3B (BCOMP) - Submitting', () =
           }
       })))
 
-    s.withArgs('BC0001191/tasks')
+    sinonAxiosGet.withArgs('BC0001191/tasks')
       .returns(new Promise((resolve) => resolve({
         data: {
           'tasks': [
@@ -924,7 +924,7 @@ describe('Standalone Office Address Filing - Part 3B (BCOMP) - Submitting', () =
     vm.officeAddressFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
     expect(vm.validated).toEqual(true)
 
     // make sure a fee is required
@@ -983,7 +983,7 @@ describe('Standalone Office Address Filing - Part 3B (BCOMP) - Submitting', () =
     vm.officeAddressFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
     expect(vm.validated).toEqual(true)
 
     // make sure a fee is required
@@ -1026,7 +1026,7 @@ describe('Standalone Office Address Filing - Part 4 - Saving', () => {
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
@@ -1061,8 +1061,7 @@ describe('Standalone Office Address Filing - Part 4 - Saving', () => {
           }
       })))
 
-    let s = sinon.stub(axios, 'get')
-    s.withArgs('CP0001191/tasks')
+    sinon.stub(axios, 'get').withArgs('CP0001191/tasks')
       .returns(new Promise((resolve) => resolve({
         data: {
           'tasks': [
@@ -1143,7 +1142,7 @@ describe('Standalone Office Address Filing - Part 4 - Saving', () => {
   })
 })
 
-describe('Standalone Office Address Filing - Part 4B (BCOMP) - Saving', () => {
+describe('Standalone Office Address Filing - Part 4B - Saving (BCOMP)', () => {
   const { assign } = window.location
 
   beforeAll(() => {
@@ -1156,7 +1155,7 @@ describe('Standalone Office Address Filing - Part 4B (BCOMP) - Saving', () => {
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'BC0001191'
     store.state.entityName = 'Legal Name - BC0001191'
@@ -1200,8 +1199,7 @@ describe('Standalone Office Address Filing - Part 4B (BCOMP) - Saving', () => {
           }
       })))
 
-    let s = sinon.stub(axios, 'get')
-    s.withArgs('BC0001191/tasks')
+    sinon.stub(axios, 'get').withArgs('BC0001191/tasks')
       .returns(new Promise((resolve) => resolve({
         data: {
           'tasks': [
@@ -1283,16 +1281,22 @@ describe('Standalone Office Address Filing - Part 4B (BCOMP) - Saving', () => {
 })
 
 describe('Standalone Office Address Filing - Part 5 - Data', () => {
-  let wrapper
-  let vm
+  let wrapper: Wrapper<Vue>
+  let vm: any
   let spy
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
 
-    // mock "save draft" endpoint - garbage response data, we aren't testing that
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
+
+    // mock "save draft" endpoint
     spy = sinon.stub(axios, 'post').withArgs('CP0001191/filings?draft=true')
       .returns(new Promise((resolve) => resolve({
         data:
@@ -1322,7 +1326,7 @@ describe('Standalone Office Address Filing - Part 5 - Data', () => {
     router.push({ name: 'standalone-addresses', params: { id: '0' } }) // new filing id
 
     wrapper = shallowMount(StandaloneOfficeAddressFiling, { store, localVue, router, vuetify })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
 
     // stub address data
     vm.addresses = {
@@ -1364,17 +1368,23 @@ describe('Standalone Office Address Filing - Part 5 - Data', () => {
   })
 })
 
-describe('Standalone Office Address Filing - Part 5B (BCOMP) - Data', () => {
-  let wrapper
-  let vm
+describe('Standalone Office Address Filing - Part 5B - Data (BCOMP)', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
   let spy
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'BC0001191'
     store.state.entityName = 'Legal Name - BC0001191'
 
-    // mock "save draft" endpoint - garbage response data, we aren't testing that
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('BC0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
+
+    // mock "save draft" endpoint
     spy = sinon.stub(axios, 'post').withArgs('BC0001191/filings?draft=true')
       .returns(new Promise((resolve) => resolve({
         data:
@@ -1408,7 +1418,7 @@ describe('Standalone Office Address Filing - Part 5B (BCOMP) - Data', () => {
     router.push({ name: 'standalone-addresses', params: { id: '0' } }) // new filing id
 
     wrapper = shallowMount(StandaloneOfficeAddressFiling, { store, localVue, router, vuetify })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
 
     // stub address data
     vm.addresses = {
@@ -1454,7 +1464,7 @@ describe('Standalone Office Address Filing - Part 5B (BCOMP) - Data', () => {
   })
 })
 
-describe('Standalone Office Address Filing - Part 6 - Error/Warning dialogs', () => {
+describe('Standalone Office Address Filing - Part 6 - Error/Warning Dialogs', () => {
   const { assign } = window.location
 
   beforeAll(() => {
@@ -1467,10 +1477,53 @@ describe('Standalone Office Address Filing - Part 6 - Error/Warning dialogs', ()
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
+
+    const sinonAxiosGet = sinon.stub(axios, 'get')
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinonAxiosGet
+      .withArgs('CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
+
+    // mock "fetch a draft filing" endpoint
+    sinonAxiosGet
+      .withArgs('CP0001191/filings/123')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            'filing': {
+              'changeOfAddress': {
+                'offices': {
+                  'registeredOffice': {
+                    'deliveryAddress': sampleDeliveryAddress,
+                    'mailingAddress': sampleMailingAddress
+                  }
+                }
+              },
+              'business': {
+                'cacheId': 1,
+                'foundingDate': '2007-04-08',
+                'identifier': 'CP0001191',
+                'lastLedgerTimestamp': '2019-04-15T20:05:49.068272+00:00',
+                'legalName': 'Legal Name - CP0001191'
+              },
+              'header': {
+                'name': 'changeOfAddress',
+                'date': '2017-06-06',
+                'submitter': 'cp0001191',
+                'status': 'DRAFT',
+                'certifiedBy': 'Full Name',
+                'email': 'no_one@never.get',
+                'filingId': 123,
+                'routingSlipNumber': '456'
+              }
+            }
+          }
+      })))
 
     // mock "file post" endpoint
     const p1 = Promise.reject({

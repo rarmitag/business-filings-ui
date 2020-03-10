@@ -3,12 +3,11 @@ import Vue from 'vue'
 import Vuetify from 'vuetify'
 import Vuelidate from 'vuelidate'
 import sinon from 'sinon'
-import { createLocalVue, shallowMount, mount } from '@vue/test-utils'
+import { createLocalVue, shallowMount, mount, Wrapper } from '@vue/test-utils'
 import flushPromises from 'flush-promises'
 import CodDate from '@/components/StandaloneDirectorChange/CODDate.vue'
-import Directors from '@/components/AnnualReport/Directors.vue'
-import Certify from '@/components/AnnualReport/Certify.vue'
-import StaffPayment from '@/components/AnnualReport/StaffPayment.vue'
+import Directors from '@/components/common/Directors.vue'
+import { Certify, StaffPayment } from '@/components/common'
 import axios from '@/axios-auth'
 import store from '@/store/store'
 import StandaloneDirectorsFiling from '@/views/StandaloneDirectorsFiling.vue'
@@ -24,7 +23,7 @@ Vue.use(Vuelidate)
 // ref: https://github.com/vuejs/vue-test-utils/issues/532
 Vue.config.silent = true
 
-let vuetify = new Vuetify({})
+const vuetify = new Vuetify({})
 
 const sampleDirectors = [
   {
@@ -73,7 +72,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
   beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
-    store.state.currentDate = '2019/07/15'
+    store.state.currentDate = '2019-07-15'
     // set Last Filing Date and verify new Min Date
     store.state.entityFoundingDate = '2018-03-01T00:00:00'
   })
@@ -97,13 +96,8 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     const $route = { params: { id: 0 } } // new filing id
     const wrapper = shallowMount(StandaloneDirectorsFiling, { store, mocks: { $route } })
 
-    // component should be displayed when totalFee > 0
-    wrapper.setData({ totalFee: 1 })
+    // component should be displayed
     expect(wrapper.find(StaffPayment).exists()).toBe(true)
-
-    // component should not be displayed when totalFee <= 0
-    wrapper.setData({ totalFee: 0 })
-    expect(wrapper.find(StaffPayment).exists()).toBe(false)
 
     // reset store
     // NB: this is important for subsequent tests
@@ -122,7 +116,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(true)
@@ -140,7 +134,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(false)
@@ -158,7 +152,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.directorFormValid = false
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(false)
@@ -190,7 +184,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = false
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(false)
@@ -207,7 +201,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.codDateValid = true
     vm.directorFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummydata
+    store.state.filingData = [{}] // dummy data
 
     // set properties to make only staff payment invalid
     store.state.keycloakRoles = ['staff']
@@ -252,7 +246,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [] // no data
+    store.state.filingData = [] // no data
 
     // confirm that flag is set correctly
     expect(vm.validated).toEqual(false)
@@ -287,7 +281,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // confirm that button is enabled
     expect(wrapper.find('#cod-file-pay-btn').attributes('disabled')).toBeUndefined()
@@ -322,7 +316,7 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
     vm.directorFormValid = false
     vm.staffPaymentFormValid = false
     vm.certifyFormValid = false
-    vm.filingData = [] // no data
+    store.state.filingData = [] // no data
 
     // confirm that button is disabled
     expect(wrapper.find('#cod-file-pay-btn').attributes('disabled')).toBe('disabled')
@@ -332,11 +326,11 @@ describe('Standalone Directors Filing - Part 1 - UI', () => {
 })
 
 describe('Standalone Directors Filing - Part 2 - Resuming', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
-    store.state.currentDate = '2019/07/15'
+    store.state.currentDate = '2019-07-15'
 
     // mock "fetch a draft filing" endpoint
     sinon.stub(axios, 'get').withArgs('CP0001191/filings/123')
@@ -413,11 +407,11 @@ describe('Standalone Directors Filing - Part 3A - Submitting filing that needs t
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
-    store.state.currentDate = '2019/07/15'
+    store.state.currentDate = '2019-07-15'
 
     const get = sinon.stub(axios, 'get')
 
@@ -576,7 +570,7 @@ describe('Standalone Directors Filing - Part 3A - Submitting filing that needs t
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'CP' }] // dummy data
+    store.state.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'CP' }] // dummy data
 
     expect(vm.validated).toEqual(true)
 
@@ -640,7 +634,7 @@ describe('Standalone Directors Filing - Part 3A - Submitting filing that needs t
     vm.codDateValid = true
     vm.directorFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'BC' }] // dummy data
+    store.state.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'BC' }] // dummy data
 
     expect(vm.validated).toEqual(true)
 
@@ -704,7 +698,7 @@ describe('Standalone Directors Filing - Part 3A - Submitting filing that needs t
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     expect(vm.validated).toEqual(true)
 
@@ -738,11 +732,11 @@ describe('Standalone Directors Filing - Part 3A - Submitting filing that needs t
 })
 
 describe('Standalone Directors Filing - Part 3B - Submitting filing that doesn\'t need to be paid', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
-    store.state.currentDate = '2019/07/15'
+    store.state.currentDate = '2019-07-15'
 
     // mock "save and file" endpoint
     sinon.stub(axios, 'post').withArgs('CP0001191/filings')
@@ -818,7 +812,7 @@ describe('Standalone Directors Filing - Part 3B - Submitting filing that doesn\'
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // NB: can't find button because Vuetify hasn't rendered it
     // const button = wrapper.find('#cod-file-pay-btn')
@@ -849,11 +843,11 @@ describe('Standalone Directors Filing - Part 4 - Saving', () => {
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
-    store.state.currentDate = '2019/07/15'
+    store.state.currentDate = '2019-07-15'
 
     // mock "save draft" endpoint
     sinon.stub(axios, 'post').withArgs('CP0001191/filings?draft=true')
@@ -923,7 +917,7 @@ describe('Standalone Directors Filing - Part 4 - Saving', () => {
       vm.directorFormValid = true
       vm.staffPaymentFormValid = true
       vm.certifyFormValid = true
-      vm.filingData = [{}] // dummy data
+      store.state.filingData = [{}] // dummy data
 
       // sanity check
       expect(jest.isMockFunction(window.location.assign)).toBe(true)
@@ -966,7 +960,7 @@ describe('Standalone Directors Filing - Part 4 - Saving', () => {
     vm.directorFormValid = true
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{}] // dummy data
+    store.state.filingData = [{}] // dummy data
 
     // sanity check
     expect(jest.isMockFunction(window.location.assign)).toBe(true)
@@ -994,15 +988,21 @@ describe('Standalone Directors Filing - Part 4 - Saving', () => {
 })
 
 describe('Standalone Directors Filing - Part 5 - Data', () => {
-  let wrapper
-  let vm
+  let wrapper: Wrapper<Vue>
+  let vm: any
   let spy
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
-    store.state.currentDate = '2019/07/15'
+    store.state.currentDate = '2019-07-15'
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
 
     // mock "save draft" endpoint - garbage response data, we aren't testing that
     spy = sinon.stub(axios, 'post').withArgs('CP0001191/filings?draft=true')
@@ -1029,7 +1029,7 @@ describe('Standalone Directors Filing - Part 5 - Data', () => {
     router.push({ name: 'standalone-directors', params: { id: '0' } }) // new filing id
 
     wrapper = shallowMount(StandaloneDirectorsFiling, { store, localVue, router })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
 
     // set up director data
     vm.allDirectors = [
@@ -1138,7 +1138,7 @@ describe('Standalone Directors Filing - Part 5 - Data', () => {
   })
 })
 
-describe('Standalone Directors Filing - Part 6 - Error/Warning dialogs', () => {
+describe('Standalone Directors Filing - Part 6 - Error/Warning Dialogs', () => {
   const { assign } = window.location
 
   beforeAll(() => {
@@ -1151,11 +1151,11 @@ describe('Standalone Directors Filing - Part 6 - Error/Warning dialogs', () => {
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
-    store.state.currentDate = '2019/07/15'
+    store.state.currentDate = '2019-07-15'
 
     const get = sinon.stub(axios, 'get')
 
@@ -1320,7 +1320,7 @@ describe('Standalone Directors Filing - Part 6 - Error/Warning dialogs', () => {
       vm.directorFormValid = true
       vm.staffPaymentFormValid = true
       vm.certifyFormValid = true
-      vm.filingData = [{}] // dummy data
+      store.state.filingData = [{}] // dummy data
 
       // sanity check
       expect(jest.isMockFunction(window.location.assign)).toBe(true)
@@ -1356,7 +1356,7 @@ describe('Standalone Directors Filing - Part 6 - Error/Warning dialogs', () => {
       vm.directorFormValid = true
       vm.staffPaymentFormValid = true
       vm.certifyFormValid = true
-      vm.filingData = [{}] // dummy data
+      store.state.filingData = [{}] // dummy data
 
       // sanity check
       expect(jest.isMockFunction(window.location.assign)).toBe(true)

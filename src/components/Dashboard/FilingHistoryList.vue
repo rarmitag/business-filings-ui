@@ -16,29 +16,32 @@
     <v-expansion-panels v-if="filedItems.length > 0" v-model="panel">
       <v-expansion-panel
         class="align-items-top filing-history-item"
-        v-for="(item, index) in filedItems"
+        v-for="(filing, index) in filedItems"
         :key="index"
       >
         <v-expansion-panel-header class="filing-item-toggle">
           <div class="list-item">
             <div class="filing-label">
-              <h3>{{item.title}}</h3>
+              <h3>{{filing.title}} {{applyCorrectionTag(filing)}}</h3>
               <div class="list-item__subtitle">
-                <v-scale-transition v-if="isCoaFutureEffective(item.type, item.status)">
+                <v-scale-transition v-if="isCoaFutureEffective(filing.type, filing.status)">
                   <v-tooltip top content-class="pending-tooltip">
                     <template v-slot:activator="{ on }">
                       <div id="pending-alert" class="list-item__subtitle" v-on="on">
-                        <span>FILED AND PENDING (filed by {{item.filingAuthor}} on {{item.filingDate}})</span>
+                        <span>FILED AND PENDING (filed by {{filing.filingAuthor}} on {{filing.filingDate}})</span>
                         <v-icon color="yellow" small>mdi-alert</v-icon>
                       </div>
                     </template>
-                    <span>The updated office addresses will be legally effective on {{item.filingEffectiveDate}},
+                    <span>The updated office addresses will be legally effective on {{filing.filingEffectiveDate}},
                       12:01 AM (Pacific Time). No other filings are allowed until then.</span>
                   </v-tooltip>
                 </v-scale-transition>
-                <span v-else>FILED AND PAID (filed by {{item.filingAuthor}} on {{item.filingDate}})</span>
-                <template v-if="item.comments.length > 0">
-                  <span>{{item.comments.length}} Detail Comment{{item.comments.length > 1 ? "s" : ""}}</span>
+                <span v-else>FILED AND PAID (filed by {{filing.filingAuthor}} on {{filing.filingDate}})</span>
+                <template v-if="filing.comments.length > 0">
+                  <span>
+                    <v-icon small>mdi-message-reply</v-icon>
+                    Detail{{filing.comments.length > 1 ? "s" : ""}} ({{filing.comments.length}})
+                  </span>
                 </template>
               </div>
             </div>
@@ -46,11 +49,11 @@
             <div class="filing-item__actions">
               <div class="toggle-info">
                 <template v-if="panel === index">
-                  <span v-if="item.paperOnly">Close</span>
+                  <span v-if="filing.paperOnly">Close</span>
                   <span v-else>Hide Documents</span>
                 </template>
                 <template v-else>
-                  <span v-if="item.paperOnly">Request a Copy</span>
+                  <span v-if="filing.paperOnly">Request a Copy</span>
                   <span v-else>View Documents</span>
                 </template>
               </div>
@@ -64,14 +67,13 @@
                 </template>
                 <v-list dense>
                   <v-list-item-group color="primary">
-                    <v-list-item disabled>
+                    <v-list-item :disabled="hasBlockerFiling || filing.isCorrection">
                       <v-list-item-icon>
                         <v-icon>mdi-file-document-edit-outline</v-icon>
                       </v-list-item-icon>
                       <v-list-item-title
                         class="file-correction-item"
-                        @click="correctThisItem(item)"
-                        :disabled="hasBlockerFiling || item.isCorrected"
+                        @click="correctThisItem(filing)"
                       >
                         File a Correction
                       </v-list-item-title>
@@ -83,9 +85,9 @@
                       </v-list-item-icon>
                       <v-list-item-title
                         class="add-detail-comment-item"
-                        @click="showCommentDialog(item.filingId)"
+                        @click="showCommentDialog(filing.filingId)"
                       >
-                        Add Detail Comment
+                        Add Detail
                       </v-list-item-title>
                     </v-list-item>
                   </v-list-item-group>
@@ -96,8 +98,8 @@
         </v-expansion-panel-header>
 
         <v-expansion-panel-content>
-          <v-list dense class="mt-n1 mb-n3 pt-0 pb-0" v-if="!item.paperOnly">
-            <v-list-item class="pl-0 pr-0" v-for="(document, index) in item.filingDocuments" :key="index">
+          <v-list dense class="mt-n1 mb-n3 pt-0 pb-0" v-if="!filing.paperOnly">
+            <v-list-item class="pl-0 pr-0" v-for="(document, index) in filing.filingDocuments" :key="index">
               <v-btn text color="primary"
                 class="download-document-btn pl-1 pr-2"
                 @click="downloadDocument(document)"
@@ -109,10 +111,10 @@
               </v-btn>
             </v-list-item>
 
-            <v-list-item class="pl-0 pr-0" v-if="item.paymentToken">
+            <v-list-item class="pl-0 pr-0" v-if="filing.paymentToken">
               <v-btn text color="primary"
                 class="download-receipt-btn pl-1 pr-2"
-                @click="downloadReceipt(item)"
+                @click="downloadReceipt(filing)"
                 :disabled="loadingReceipt"
                 :loading="loadingReceipt"
               >
@@ -121,10 +123,10 @@
               </v-btn>
             </v-list-item>
 
-            <v-list-item class="pl-0 pr-0" v-if="!item.paperOnly">
+            <v-list-item class="pl-0 pr-0" v-if="!filing.paperOnly">
               <v-btn text color="primary"
                 class="download-all-btn pl-1 pr-2"
-                @click="downloadAll(item)"
+                @click="downloadAll(filing)"
                 :disabled="loadingAll"
                 :loading="loadingAll"
               >
@@ -134,9 +136,9 @@
             </v-list-item>
           </v-list>
 
-          <div class="paper-filings body-2" v-if="item.paperOnly">
-            <p>Filings completed <b>before March 10, 2019</b> are only available from the BC Registry as paper
-              documents.</p>
+          <div class="paper-filings body-2" v-if="filing.paperOnly">
+            <p>Filings completed <strong>before March 10, 2019</strong> are only available from the BC Registry
+              as paper documents.</p>
             <p>To request copies of paper documents, contact BC Registry Staff with the document you require and
               the name and incorporation number of your association:</p>
             <ul class="contact-info__list mt-5">
@@ -153,36 +155,12 @@
           </div>
 
           <!-- the detail comments section -->
-          <div class="comments-section mt-8" v-if="item.comments.length > 0">
-            <v-divider></v-divider>
-            <div class="title-bar mt-5">
-              <h4>Detail Comments ({{item.comments.length}})</h4>
-              <v-btn
-                color="primary"
-                v-if="isRoleStaff"
-                @click.stop="showCommentDialog(item.filingId)"
-              >
-                  <span>Add Detail Comment</span>
-                </v-btn>
-            </div>
-            <div>
-              <!-- the detail comments list-->
-              <v-list>
-                <v-list-item class="pl-0 pr-0" v-for="(comment, index) in item.comments" :key="index">
-                  <v-list-item-content>
-                    <v-list-item-title class="body-2">
-                      <strong v-if="!isRoleStaff">Registry Staff</strong>
-                      <strong v-else>{{comment.submitterDisplayName || 'N/A'}}</strong>
-                      ({{convertUTCTimeToLocalTime(comment.timestamp)}})
-                    </v-list-item-title>
-                    <v-list-item-subtitle class="body-2">
-                      <div class="pre-line">{{comment.comment}}</div>
-                    </v-list-item-subtitle>
-                  </v-list-item-content>
-                </v-list-item>
-              </v-list>
-            </div>
-          </div>
+          <details-list
+            :filing=filing
+            :isTask="false"
+            @showCommentDialog="showCommentDialog($event)"
+          />
+
         </v-expansion-panel-content>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -200,7 +178,10 @@
 <script lang="ts">
 // Libraries
 import axios from '@/axios-auth'
-import { mapGetters, mapState, mapActions } from 'vuex'
+import { mapGetters, mapState } from 'vuex'
+
+// Components
+import { DetailsList } from '@/components/common'
 
 // Dialogs
 import { AddCommentDialog, DownloadErrorDialog } from '@/components/dialogs'
@@ -209,15 +190,16 @@ import { AddCommentDialog, DownloadErrorDialog } from '@/components/dialogs'
 import { EntityTypes, FilingNames, FilingStatus, FilingTypes } from '@/enums'
 
 // Mixins
-import { DateMixin, EntityFilterMixin } from '@/mixins'
+import { DateMixin, EntityFilterMixin, FilingMixin } from '@/mixins'
 
 export default {
   name: 'FilingHistoryList',
 
-  mixins: [DateMixin, EntityFilterMixin],
+  mixins: [DateMixin, EntityFilterMixin, FilingMixin],
 
   components: {
     AddCommentDialog,
+    DetailsList,
     DownloadErrorDialog
   },
 
@@ -233,7 +215,10 @@ export default {
       currentFilingId: null,
 
       // enums
-      EntityTypes
+      EntityTypes,
+      FilingNames,
+      FilingStatus,
+      FilingTypes
     }
   },
 
@@ -253,8 +238,6 @@ export default {
   },
 
   methods: {
-    ...mapActions(['setTriggerDashboardReload']),
-
     loadData () {
       this.filedItems = []
 
@@ -288,7 +271,7 @@ export default {
                 this.loadOtherReport(FilingTypes.VOLUNTARY_DISSOLUTION, filing, filing.voluntaryDissolution)
                 break
               case FilingTypes.CORRECTION:
-                this.loadOtherReport(FilingTypes.CORRECTION, filing.correction)
+                this.loadCorrection(filing, filing.correction)
                 break
               default:
                 // fallback for unknown filings
@@ -311,9 +294,9 @@ export default {
       if (highlightId) { this.highlightFiling(highlightId) }
     },
 
-    // Method to extract date from a local datetime string
+    // Extracts date from a local datetime string
     // Returns "yyyy-mm-dd"
-    formatDate (dateString): string {
+    formatDate (dateString: string): string {
       if (!dateString) return null // safety check
       return dateString.split(' ')[0]
     },
@@ -328,7 +311,6 @@ export default {
           const type = filing.header.name
           const agmYear = +date.slice(0, 4)
           const title = this.typeToTitle(type, agmYear)
-
           const item = {
             type: type,
             title: title,
@@ -342,9 +324,9 @@ export default {
               name: 'Annual Report',
               documentName: `${this.entityIncNo} - ${title} - ${filingDate}.pdf`
             }],
-            paperOnly: false,
             isCorrected: filing.header.isCorrected || false,
-            comments: this.flattenComments(filing.header.comments)
+            isCorrectionPending: filing.header.isCorrectionPending || false,
+            comments: this.flattenAndSortComments(filing.header.comments)
           }
           this.filedItems.push(item)
         } else {
@@ -369,8 +351,7 @@ export default {
         if (filing.header.effectiveDate) effectiveDate = filing.header.effectiveDate.slice(0, 10)
 
         const type = filing.header.name
-        const agmYear = filing.header.date.slice(0, 4)
-        const title = this.typeToTitle(type, agmYear)
+        const title = this.typeToTitle(type)
 
         const item = {
           type: type,
@@ -387,14 +368,38 @@ export default {
             documentName: `${this.entityIncNo} - ${title} - ${filingDate}.pdf`
           }],
           status: filing.header.status,
-          paperOnly: false,
           isCorrected: filing.header.isCorrected || false,
-          comments: this.flattenComments(filing.header.comments)
+          isCorrectionPending: filing.header.isCorrectionPending || false,
+          comments: this.flattenAndSortComments(filing.header.comments)
         }
         this.filedItems.push(item)
       } else {
         // eslint-disable-next-line no-console
-        console.log(`ERROR - missing section in filing =`, filing)
+        console.log('ERROR - missing section in filing =', filing)
+      }
+    },
+
+    loadCorrection (filing, section) {
+      if (section) {
+        const localDateTime = this.convertUTCTimeToLocalTime(filing.header.date)
+
+        const item = {
+          type: filing.header.name,
+          title: `Correction - ${this.typeToTitle(filing.correction.correctedFilingType)}`,
+          filingId: filing.header.filingId,
+          filingAuthor: filing.header.certifiedBy,
+          filingDateTime: localDateTime,
+          filingDate: filing.correction.correctedFilingDate,
+          isCorrection: true,
+          paymentToken: filing.header.paymentToken,
+          corrFilingId: filing.correction.correctedFilingId,
+          correctedFilingType: filing.correction.correctedFilingType,
+          comments: this.flattenAndSortComments(filing.header.comments)
+        }
+        this.filedItems.push(item)
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('ERROR - missing section in filing =', filing)
       }
     },
 
@@ -406,8 +411,14 @@ export default {
       const filingDate = this.formatDate(localDateTime)
 
       const type = filing.header.name
-      const agmYear = filing.header.date.slice(0, 4)
-      const title = this.typeToTitle(type, agmYear)
+
+      let title: string
+      if (filing.annualReport && filing.annualReport.annualReportDate) {
+        const agmYear: number = +filing.annualReport.annualReportDate.slice(0, 4)
+        title = this.typeToTitle(type, agmYear)
+      } else {
+        title = this.typeToTitle(type)
+      }
 
       const item = {
         type: type,
@@ -424,35 +435,18 @@ export default {
         }],
         paperOnly: true,
         isCorrected: filing.header.isCorrected || false,
-        comments: this.flattenComments(filing.header.comments)
+        isCorrectionPending: filing.header.isCorrectionPending || false,
+        comments: this.flattenAndSortComments(filing.header.comments)
       }
       this.filedItems.push(item)
     },
 
-    flattenComments (comments: any): Array<any> {
-      return (comments && comments.length > 0) ? comments.map(c => c.comment) : []
-    },
-
-    typeToTitle (type: string, agmYear: string): string {
-      if (!type) return '' // safety check
-      switch (type) {
-        case FilingTypes.ANNUAL_REPORT: return `${FilingNames.ANNUAL_REPORT} (${agmYear})`
-        case FilingTypes.CHANGE_OF_DIRECTORS: return FilingNames.DIRECTOR_CHANGE
-        case FilingTypes.CHANGE_OF_ADDRESS: return FilingNames.ADDRESS_CHANGE
-        case FilingTypes.CHANGE_OF_NAME: return FilingNames.LEGAL_NAME_CHANGE
-        case FilingTypes.SPECIAL_RESOLUTION: return FilingNames.SPECIAL_RESOLUTION
-        case FilingTypes.VOLUNTARY_DISSOLUTION: return FilingNames.VOLUNTARY_DISSOLUTION
-        case FilingTypes.CORRECTION: return FilingNames.CORRECTION
-      }
-      // fallback for unknown filings
-      return type.split(/(?=[A-Z])/).join(' ').replace(/^\w/, c => c.toUpperCase())
-    },
-
-    highlightFiling (highlightId) {
-      // expand the panel of the matching filing
+    /** Expands the panel of the specified Filing ID. */
+    highlightFiling (filingId: number) {
       for (let i = 0; i < this.filedItems.length; i++) {
-        // assume there is always a filing document
-        if (this.filedItems[i].filingDocuments[0].filingId === highlightId) {
+        const filingDocuments = this.filedItems[i].filingDocuments
+        // NB: this only works if there is a filing document
+        if (filingDocuments && filingDocuments[0].filingId === filingId) {
           this.panel = i
           break
         }
@@ -463,32 +457,31 @@ export default {
       if (!item || !item.type) return // safety check
       switch (item.type) {
         case FilingTypes.ANNUAL_REPORT:
-          // FUTURE:
+          // FUTURE?
           // this.$router.push({ name: 'annual-report', params: { id: item.filingId, isCorrection: true } })
           // FOR NOW:
-          this.$router.push({ name: 'correction', params: { id: item.filingId } })
+          this.$router.push({ name: 'correction', params: { correctedFilingId: item.filingId } })
           break
         case FilingTypes.CHANGE_OF_DIRECTORS:
-          // FUTURE:
+          // FUTURE?
           // this.$router.push({ name: 'standalone-directors', params: { id: item.filingId, isCorrection: true } })
           // FOR NOW:
-          this.$router.push({ name: 'correction', params: { id: item.filingId } })
+          this.$router.push({ name: 'correction', params: { correctedFilingId: item.filingId } })
           break
         case FilingTypes.CHANGE_OF_ADDRESS:
-          // FUTURE:
+          // FUTURE?
           // this.$router.push({ name: 'standalone-addresses', params: { id: item.filingId, isCorrection: true } })
           // FOR NOW:
-          this.$router.push({ name: 'correction', params: { id: item.filingId } })
+          this.$router.push({ name: 'correction', params: { correctedFilingId: item.filingId } })
           break
         case FilingTypes.CORRECTION:
-          // FUTURE:
-          // this.$router.push({ name: 'correction', params: { id: item.filingId, isCorrection: true } })
-          // FOR NOW:
-          this.$router.push({ name: 'correction', params: { id: item.filingId } })
+          // FUTURE: allow a correction to a correction (design TBD)
+          // this.$router.push({ name: 'correction', params: { correctedFilingId: item.filingId } })
+          alert('At this time, you cannot correct a correction. Please contact Ops if needed.')
           break
         default:
           // fallback for all other filings
-          this.$router.push({ name: 'correction', params: { id: item.filingId } })
+          this.$router.push({ name: 'correction', params: { correctedFilingId: item.filingId } })
           break
       }
     },
@@ -546,6 +539,8 @@ export default {
     },
 
     async downloadOneReceipt (filing) {
+      if (!filing.paymentToken || !filing.filingDateTime || !filing.filingDate) return // safety check
+
       const url = filing.paymentToken + '/receipts'
       const data = {
         corpName: this.entityName,
@@ -598,9 +593,11 @@ export default {
 
     async downloadAll (filing) {
       this.loadingAll = true
-      // first download document(s)
-      for (let i = 0; i < filing.filingDocuments.length; i++) {
-        await this.downloadOneDocument(filing.filingDocuments[i])
+      // first download documents (if any)
+      if (filing.filingDocuments) {
+        for (let i = 0; i < filing.filingDocuments.length; i++) {
+          await this.downloadOneDocument(filing.filingDocuments[i])
+        }
       }
       // finally download receipt
       if (filing.paymentToken) {
@@ -622,14 +619,45 @@ export default {
         status === FilingStatus.PAID
     },
 
-    showCommentDialog (filingId): void {
+    showCommentDialog (filingId: number): void {
       this.currentFilingId = filingId
       this.addCommentDialog = true
     },
 
-    hideCommentDialog (needReload): void {
+    async hideCommentDialog (needReload: boolean): Promise<void> {
       this.addCommentDialog = false
-      if (needReload) this.setTriggerDashboardReload(true)
+      // if needed, reload comments for this filing
+      // NB: no spinner or state change, just do it quietly
+      if (needReload) await this.reloadComments(this.currentFilingId)
+    },
+
+    async reloadComments (filingId: number): Promise<void> {
+      // find the filing in the list
+      const filing = this.filedItems.find(item => (item.filingId === filingId))
+
+      if (filing) {
+        // fetch latest comments for this filing
+        const url = this.entityIncNo + '/filings/' + filingId
+        await axios.get(url).then(res => {
+          if (res && res.data && res.data.filing && res.data.filing.header) {
+            // reassign just the comments
+            filing.comments = this.flattenAndSortComments(res.data.filing.header.comments)
+          } else {
+            // eslint-disable-next-line no-console
+            console.log('reloadComments() error - invalid response =', res)
+          }
+        }).catch(error => {
+          // eslint-disable-next-line no-console
+          console.error('reloadComments() error =', error)
+        })
+      } else {
+        // eslint-disable-next-line no-console
+        console.error('reloadComments() error - could not find filing id =', filingId)
+      }
+    },
+
+    applyCorrectionTag (item: any): string {
+      return item.isCorrected ? '- Corrected' : item.isCorrectionPending ? '- Correction Pending' : ''
     }
   },
 

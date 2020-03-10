@@ -84,8 +84,8 @@
                 <!-- Certify -->
                 <section>
                   <header>
-                    <h2 id="AR-step-4-header">Certify Correct</h2>
-                    <p>Enter the legal name of the current director, officer, or lawyer submitting this
+                    <h2 id="AR-step-4-header">Certify</h2>
+                    <p>Enter the legal name of the person authorized to complete and submit this
                       Director Change.</p>
                   </header>
                   <certify
@@ -98,12 +98,14 @@
                 </section>
 
                 <!-- Staff Payment -->
-                <section v-if="isRoleStaff && isPayRequired">
+                <section v-if="isRoleStaff">
                   <header>
                     <h2 id="AR-step-5-header">Staff Payment</h2>
                   </header>
                   <staff-payment
                     :routingSlipNumber.sync="routingSlipNumber"
+                    :isPriority.sync="isPriority"
+                    :isWaiveFees.sync="isWaiveFees"
                     @valid="staffPaymentFormValid=$event"
                   />
                 </section>
@@ -131,14 +133,14 @@
         <v-container id="standalone-directors-buttons-container" class="list-item">
           <div class="buttons-left">
             <v-btn id="cod-save-btn" large
-              :disabled="!isSaveButtonEnabled || busySaving"
+              :disabled="busySaving"
               :loading="saving"
               @click="onClickSave()"
             >
               <span>Save</span>
             </v-btn>
             <v-btn id="cod-save-resume-btn" large
-              :disabled="!isSaveButtonEnabled || busySaving"
+              :disabled="busySaving"
               :loading="savingResuming"
               @click="onClickSaveResume()"
             >
@@ -199,7 +201,7 @@
                 <!-- Certify -->
                 <section>
                   <header>
-                    <h2>Certify Correct</h2>
+                    <h2>Certify</h2>
                   </header>
                   <summary-certify
                     :isCertified.sync="isCertified"
@@ -211,12 +213,14 @@
                 </section>
 
                 <!-- Staff Payment -->
-                <section v-if="isRoleStaff && isPayRequired">
+                <section v-if="isRoleStaff">
                   <header>
                     <h2>Staff Payment</h2>
                   </header>
                   <summary-staff-payment
-                    :value="routingSlipNumber"
+                    :routingSlipNumber="routingSlipNumber"
+                    :isPriority.sync="isPriority"
+                    :isWaiveFees.sync="isWaiveFees"
                   />
                 </section>
               </article>
@@ -279,25 +283,23 @@
 <script lang="ts">
 // Libraries
 import axios from '@/axios-auth'
-import { mapState, mapGetters } from 'vuex'
+import { mapActions, mapState, mapGetters } from 'vuex'
 import { BAD_REQUEST, PAYMENT_REQUIRED } from 'http-status-codes'
 
 // Components
 import CodDate from '@/components/StandaloneDirectorChange/CODDate.vue'
-import Directors from '@/components/AnnualReport/Directors.vue'
-import Certify from '@/components/AnnualReport/Certify.vue'
-import StaffPayment from '@/components/AnnualReport/StaffPayment.vue'
+import Directors from '@/components/common/Directors.vue'
 import SbcFeeSummary from 'sbc-common-components/src/components/SbcFeeSummary.vue'
-import { SummaryDirectors, SummaryCertify, SummaryStaffPayment } from '@/components/common'
+import { Certify, StaffPayment, SummaryDirectors, SummaryCertify, SummaryStaffPayment } from '@/components/common'
 
 // Dialog Components
 import { ConfirmDialog, PaymentErrorDialog, ResumeErrorDialog, SaveErrorDialog } from '@/components/dialogs'
 
 // Mixins
-import { EntityFilterMixin, ResourceLookupMixin } from '@/mixins'
+import { EntityFilterMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
 
 // Enums
-import { EntityTypes, FilingCodes } from '@/enums'
+import { EntityTypes, FilingCodes, FilingStatus, FilingTypes } from '@/enums'
 
 // Constants
 import { CEASED, APPOINTED, ADDRESSCHANGED, NAMECHANGED } from '@/constants'
@@ -320,12 +322,11 @@ export default {
     SaveErrorDialog
   },
 
-  mixins: [EntityFilterMixin, ResourceLookupMixin],
+  mixins: [EntityFilterMixin, FilingMixin, ResourceLookupMixin],
 
   data () {
     return {
       allDirectors: [],
-      filingData: [],
       resumeErrorDialog: false,
       saveErrorDialog: false,
       paymentErrorDialog: false,
@@ -349,19 +350,23 @@ export default {
       codDateValid: false,
       complianceDialogMsg: null,
 
-      // properties for Staff Payment component
+      // properties for StaffPayment component
       routingSlipNumber: null,
-      staffPaymentFormValid: false,
+      isPriority: false,
+      isWaiveFees: false,
+      staffPaymentFormValid: null,
       totalFee: 0,
 
       // enums
       EntityTypes,
-      FilingCodes
+      FilingCodes,
+      FilingStatus,
+      FilingTypes
     }
   },
 
   computed: {
-    ...mapState(['currentDate', 'entityType', 'entityName', 'entityIncNo', 'entityFoundingDate']),
+    ...mapState(['currentDate', 'entityType', 'entityName', 'entityIncNo', 'entityFoundingDate', 'filingData']),
 
     ...mapGetters(['isRoleStaff']),
 
@@ -377,10 +382,6 @@ export default {
       return (this.saving || this.savingResuming || this.filingPaying)
     },
 
-    isSaveButtonEnabled () {
-      return (this.directorFormValid && this.filingData.length > 0 && !this.directorEditInProgress && this.codDateValid)
-    },
-
     payAPIURL () {
       return sessionStorage.getItem('PAY_API_URL')
     },
@@ -392,6 +393,9 @@ export default {
   },
 
   created (): void {
+    // init
+    this.setFilingData([])
+
     // before unloading this page, if there are changes then prompt user
     window.onbeforeunload = (event) => {
       if (this.haveChanges) {
@@ -403,10 +407,10 @@ export default {
 
     // NB: filing id of 0 means "new"
     // otherwise it's a draft filing id
-    this.filingId = this.$route.params.id
+    this.filingId = +this.$route.params.id // number (may be NaN)
 
     // if tombstone data isn't set, route to home
-    if (!this.entityIncNo || (this.filingId === undefined)) {
+    if (!this.entityIncNo || isNaN(this.filingId)) {
       this.$router.push('/')
     } else if (this.filingId > 0) {
       // resume draft filing
@@ -450,16 +454,22 @@ export default {
   },
 
   methods: {
+    ...mapActions(['setFilingData']),
+
     directorsChange (modified: boolean) {
       this.haveChanges = true
       // when directors change, update filing data
-      this.toggleFiling(modified ? 'add' : 'remove', 'OTCDR')
+      // use default Priority and Waive Fees flags
+      this.updateFilingData(modified ? 'add' : 'remove', FilingCodes.DIRECTOR_CHANGE_OT,
+        this.isPriority, this.isWaiveFees)
     },
 
     directorsFreeChange (modified: boolean) {
       this.haveChanges = true
       // when directors change (free filing), update filing data
-      this.toggleFiling(modified ? 'add' : 'remove', 'OTFDR')
+      // use default Priority and Waive Fees flags
+      this.updateFilingData(modified ? 'add' : 'remove', FilingCodes.FREE_DIRECTOR_CHANGE_OT,
+        this.isPriority, this.isWaiveFees)
     },
 
     async onClickSave () {
@@ -469,7 +479,7 @@ export default {
       const filing = await this.saveFiling(true)
       if (filing) {
         // save Filing ID for future PUTs
-        this.filingId = +filing.header.filingId
+        this.filingId = +filing.header.filingId // number
       }
       this.saving = false
     },
@@ -496,7 +506,7 @@ export default {
 
       // on success, redirect to Pay URL
       if (filing && filing.header) {
-        const filingId = +filing.header.filingId
+        const filingId: number = +filing.header.filingId
 
         // whether this is a staff or no-fee filing
         const prePaidFiling = (this.isRoleStaff || !this.isPayRequired)
@@ -536,16 +546,24 @@ export default {
 
       const header = {
         header: {
-          name: 'changeOfDirectors',
+          name: FilingTypes.CHANGE_OF_DIRECTORS,
           certifiedBy: this.certifiedBy || '',
           email: 'no_one@never.get',
           date: this.currentDate,
           effectiveDate: this.codDate + 'T00:00:00+00:00'
         }
       }
-      // only save this if it's not null
-      if (this.routingSlipNumber) {
+      // only save Routing Slip Number if it's valid
+      if (this.routingSlipNumber && !this.isWaiveFees) {
         header.header['routingSlipNumber'] = this.routingSlipNumber
+      }
+      // only save Priority it it's valid
+      if (this.isPriority && !this.isWaiveFees) {
+        header.header['priority'] = true
+      }
+      // only save Waive Fees if it's valid
+      if (this.isWaiveFees) {
+        header.header['waiveFees'] = true
       }
 
       const business = {
@@ -556,7 +574,8 @@ export default {
         }
       }
 
-      if (this.isDataChanged('OTCDR') || this.isDataChanged('OTFDR')) {
+      if (this.hasFilingCode(FilingCodes.DIRECTOR_CHANGE_OT) ||
+      this.hasFilingCode(FilingCodes.FREE_DIRECTOR_CHANGE_OT)) {
         changeOfDirectors = {
           changeOfDirectors: {
             directors: this.allDirectors
@@ -564,7 +583,7 @@ export default {
         }
       }
 
-      const filingData = {
+      const data = {
         filing: Object.assign(
           {},
           header,
@@ -580,7 +599,7 @@ export default {
           url += '?draft=true'
         }
         let filing = null
-        await axios.put(url, filingData).then(res => {
+        await axios.put(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
             throw new Error('invalid API response')
           }
@@ -609,7 +628,7 @@ export default {
           url += '?draft=true'
         }
         let filing = null
-        await axios.post(url, filingData).then(res => {
+        await axios.post(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
             throw new Error('invalid API response')
           }
@@ -634,27 +653,6 @@ export default {
       }
     },
 
-    toggleFiling (setting, filing) {
-      let added = false
-      for (let i = 0; i < this.filingData.length; i++) {
-        if (this.filingData[i].filingTypeCode === filing) {
-          if (setting === 'add') {
-            added = true
-          } else {
-            this.filingData.splice(i, 1)
-          }
-          break
-        }
-      }
-      if (setting === 'add' && !added) {
-        this.filingData.push({ filingTypeCode: filing, entityType: this.entityType })
-      }
-    },
-
-    isDataChanged (key) {
-      return this.filingData.find(o => o.filingTypeCode === key)
-    },
-
     navigateToDashboard () {
       this.haveChanges = false
       this.dialog = false
@@ -671,12 +669,17 @@ export default {
             if (!filing) throw new Error('missing filing')
             if (!filing.header) throw new Error('missing header')
             if (!filing.business) throw new Error('missing business')
-            if (filing.header.name !== 'changeOfDirectors') throw new Error('invalid filing type')
+            if (filing.header.name !== FilingTypes.CHANGE_OF_DIRECTORS) throw new Error('invalid filing type')
             if (filing.business.identifier !== this.entityIncNo) throw new Error('invalid business identifier')
             if (filing.business.legalName !== this.entityName) throw new Error('invalid business legal name')
 
+            // load Certified By but not Date
             this.certifiedBy = filing.header.certifiedBy
+
+            // load Staff Payment properties
             this.routingSlipNumber = filing.header.routingSlipNumber
+            this.isPriority = filing.header.priority
+            this.isWaiveFees = filing.header.waiveFees
 
             if (filing.header.effectiveDate) {
               this.initialCODDate = filing.header.effectiveDate.slice(0, 10)
@@ -697,7 +700,8 @@ export default {
                   director => this.hasAction(director, CEASED) ||
                     this.hasAction(director, APPOINTED)
                 ).length > 0) {
-                  this.toggleFiling('add', 'OTCDR')
+                  // use default Priority and Waive Fees flags
+                  this.updateFilingData('add', FilingCodes.DIRECTOR_CHANGE_OT, this.isPriority, this.isWaiveFees)
                 }
 
                 // add filing code for free changes
@@ -705,7 +709,8 @@ export default {
                   director => this.hasAction(director, NAMECHANGED) ||
                     this.hasAction(director, ADDRESSCHANGED)
                 ).length > 0) {
-                  this.toggleFiling('add', 'OTFDR')
+                  // use default Priority and Waive Fees flags
+                  this.updateFilingData('add', FilingCodes.FREE_DIRECTOR_CHANGE_OT, this.isPriority, this.isWaiveFees)
                 }
               } else {
                 throw new Error('invalid change of directors')
@@ -718,7 +723,7 @@ export default {
             }
           } catch (err) {
             // eslint-disable-next-line no-console
-            console.log(`fetchData() error - ${err.message}, filing =`, filing)
+            console.log(`fetchData() error - ${err.message}, filing = ${filing}`)
             this.resumeErrorDialog = true
           }
         }
@@ -736,8 +741,7 @@ export default {
     },
 
     hasAction (director, action) {
-      if (director.actions.indexOf(action) >= 0) return true
-      else return false
+      return (director.actions.indexOf(action) >= 0)
     },
 
     /**
@@ -759,6 +763,7 @@ export default {
       document.documentElement.scrollTop = 0 // For Chrome, Firefox and IE
     },
 
+    /** Returns True if the specified business has any pending tasks, else False. */
     async hasTasks (businessId) {
       let hasPendingItems = false
       if (this.filingId === 0) {
@@ -767,7 +772,7 @@ export default {
             if (response && response.data && response.data.tasks) {
               response.data.tasks.forEach((task) => {
                 if (task.task && task.task.filing &&
-                  task.task.filing.header && task.task.filing.header.status !== 'NEW') {
+                  task.task.filing.header && task.task.filing.header.status !== FilingStatus.NEW) {
                   hasPendingItems = true
                 }
               })
@@ -784,16 +789,34 @@ export default {
   },
 
   watch: {
+    /** Called when Is Certified changes. */
     isCertified (val) {
       this.haveChanges = true
     },
 
+    /** Called when Certified By changes. */
     certifiedBy (val) {
       this.haveChanges = true
     },
 
+    /** Called when Routing Slip Number changes. */
     routingSlipNumber (val) {
       this.haveChanges = true
+    },
+
+    /** Called when Is Priority changes. */
+    isPriority (val: boolean): void {
+      // apply this flag to OTCDR filing code only
+      // if OTCDR code exists, simply re-add it with the updated Priority flag and default Waive Fees flag
+      if (this.hasFilingCode(FilingCodes.DIRECTOR_CHANGE_OT)) {
+        this.updateFilingData('add', FilingCodes.DIRECTOR_CHANGE_OT, val, this.isWaiveFees)
+      }
+    },
+
+    /** Called when Is Waive Fees changes. */
+    isWaiveFees (val: boolean): void {
+      // add/remove this flag to all filing codes
+      this.updateFilingData(val ? 'add' : 'remove', undefined, undefined, true)
     }
   }
 }

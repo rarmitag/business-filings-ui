@@ -1,3 +1,5 @@
+import { FilingTypes, FilingStatus } from '@/enums'
+
 export default {
   isRoleStaff (state): boolean {
     return state.keycloakRoles.includes('staff')
@@ -12,13 +14,13 @@ export default {
   },
 
   isAnnualReportEditable (state): boolean {
-    return (state.currentFilingStatus === 'NEW' || state.currentFilingStatus === 'DRAFT')
+    return (state.currentFilingStatus === FilingStatus.NEW || state.currentFilingStatus === FilingStatus.DRAFT)
   },
 
   reportState (state): string {
     switch (state.currentFilingStatus) {
-      case 'NEW': return ''
-      case 'DRAFT': return 'Draft'
+      case FilingStatus.NEW: return ''
+      case FilingStatus.DRAFT: return 'Draft'
       default: return state.currentFilingStatus
     }
   },
@@ -31,7 +33,7 @@ export default {
       let filing = state.filings[i].filing
       let filingDate = filing.header.effectiveDate || filing.header.date
       filingDate = filingDate.slice(0, 10)
-      if (filing.hasOwnProperty('changeOfDirectors')) {
+      if (filing.hasOwnProperty(FilingTypes.CHANGE_OF_DIRECTORS)) {
         if (lastCOD === null || filingDate.split('-').join('') > lastCOD.split('-').join('')) {
           lastCOD = filingDate
         }
@@ -48,7 +50,7 @@ export default {
       let filing = state.filings[i].filing
       let filingDate = filing.header.effectiveDate || filing.header.date
       filingDate = filingDate.slice(0, 10)
-      if (filing.hasOwnProperty('changeOfAddress')) {
+      if (filing.hasOwnProperty(FilingTypes.CHANGE_OF_ADDRESS)) {
         if (lastCOA === null || filingDate.split('-').join('') > lastCOA.split('-').join('')) {
           lastCOA = filingDate
         }

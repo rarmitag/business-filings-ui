@@ -73,8 +73,8 @@
             <!-- Certify -->
             <section>
               <header>
-                <h2 id="AR-step-4-header">Certify Correct</h2>
-                <p>Enter the legal name of the current director, officer, or lawyer submitting this
+                <h2 id="AR-step-4-header">Certify</h2>
+                <p>Enter the legal name of the person authorized to complete and submit this
                   Address Change.</p>
               </header>
               <certify
@@ -87,12 +87,14 @@
             </section>
 
             <!-- Staff Payment -->
-            <section v-if="isRoleStaff && isPayRequired">
+            <section v-if="isRoleStaff">
               <header>
                 <h2 id="AR-step-5-header">Staff Payment</h2>
               </header>
               <staff-payment
                 :routingSlipNumber.sync="routingSlipNumber"
+                :isPriority.sync="isPriority"
+                :isWaiveFees.sync="isWaiveFees"
                 @valid="staffPaymentFormValid=$event"
               />
             </section>
@@ -164,25 +166,23 @@
 <script lang="ts">
 // Libraries
 import axios from '@/axios-auth'
-import { mapState, mapGetters } from 'vuex'
+import { mapActions, mapState, mapGetters } from 'vuex'
 
 // Dialogs
 import { ConfirmDialog, PaymentErrorDialog, ResumeErrorDialog, SaveErrorDialog } from '@/components/dialogs'
 
 // Components
-import { OfficeAddresses } from '@/components/common'
-import Certify from '@/components/AnnualReport/Certify.vue'
-import StaffPayment from '@/components/AnnualReport/StaffPayment.vue'
+import { Certify, OfficeAddresses, StaffPayment } from '@/components/common'
 import SbcFeeSummary from 'sbc-common-components/src/components/SbcFeeSummary.vue'
 
 // Constants
 import { PAYMENT_REQUIRED, BAD_REQUEST } from 'http-status-codes'
 
 // Mixins
-import { EntityFilterMixin, ResourceLookupMixin } from '@/mixins'
+import { EntityFilterMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
 
 // Enums
-import { EntityTypes, FilingCodes } from '@/enums'
+import { EntityTypes, FilingCodes, FilingStatus, FilingTypes } from '@/enums'
 
 export default {
   name: 'StandaloneOfficeAddressFiling',
@@ -197,7 +197,7 @@ export default {
     ResumeErrorDialog,
     SaveErrorDialog
   },
-  mixins: [EntityFilterMixin, ResourceLookupMixin],
+  mixins: [EntityFilterMixin, FilingMixin, ResourceLookupMixin],
 
   data () {
     return {
@@ -205,7 +205,6 @@ export default {
       filingId: null,
       loadingMessage: 'Loading...', // initial generic message
       showLoading: false,
-      filingData: [],
       resumeErrorDialog: false,
       saveErrorDialog: false,
       paymentErrorDialog: false,
@@ -220,20 +219,24 @@ export default {
       saveErrors: [],
       saveWarnings: [],
 
-      // properties for Staff Payment component
+      // properties for StaffPayment component
       routingSlipNumber: null,
-      staffPaymentFormValid: false,
+      isPriority: false,
+      isWaiveFees: false,
+      staffPaymentFormValid: null,
       totalFee: 0,
 
       // enums
       EntityTypes,
-      FilingCodes
+      FilingCodes,
+      FilingStatus,
+      FilingTypes
     }
   },
 
   computed: {
     ...mapState(['currentDate', 'entityType', 'entityName', 'entityIncNo',
-      'entityFoundingDate', 'registeredAddress', 'recordsAddress']),
+      'entityFoundingDate', 'registeredAddress', 'recordsAddress', 'filingData']),
     ...mapGetters(['isRoleStaff']),
 
     validated () {
@@ -263,6 +266,9 @@ export default {
   },
 
   created (): void {
+    // init
+    this.setFilingData([])
+
     // before unloading this page, if there are changes then prompt user
     window.onbeforeunload = (event) => {
       if (this.haveChanges) {
@@ -274,10 +280,10 @@ export default {
 
     // NB: filing id of 0 means "new"
     // otherwise it's a draft filing id
-    this.filingId = this.$route.params.id
+    this.filingId = +this.$route.params.id // number (may be NaN)
 
     // if tombstone data isn't set, route to home
-    if (!this.entityIncNo || (this.filingId === undefined)) {
+    if (!this.entityIncNo || isNaN(this.filingId)) {
       this.$router.push('/')
     } else if (this.filingId > 0) {
       // resume draft filing
@@ -320,6 +326,8 @@ export default {
   },
 
   methods: {
+    ...mapActions(['setFilingData']),
+
     formatAddress (address) {
       return {
         'actions': address.actions || [],
@@ -344,12 +352,17 @@ export default {
             if (!filing) throw new Error('missing filing')
             if (!filing.header) throw new Error('missing header')
             if (!filing.business) throw new Error('missing business')
-            if (filing.header.name !== 'changeOfAddress') throw new Error('invalid filing type')
+            if (filing.header.name !== FilingTypes.CHANGE_OF_ADDRESS) throw new Error('invalid filing type')
             if (filing.business.identifier !== this.entityIncNo) throw new Error('invalid business identifier')
             if (filing.business.legalName !== this.entityName) throw new Error('invalid business legal name')
 
+            // load Certified By but not Date
             this.certifiedBy = filing.header.certifiedBy
+
+            // load Staff Payment properties
             this.routingSlipNumber = filing.header.routingSlipNumber
+            this.isPriority = filing.header.priority
+            this.isWaiveFees = filing.header.waiveFees
 
             // load Annual Report fields
             if (!filing.changeOfAddress) throw new Error('Missing change of address')
@@ -367,7 +380,8 @@ export default {
                     mailingAddress: changeOfAddress.recordsOffice.mailingAddress
                   }
                 }
-                this.toggleFiling('add', 'OTADD')
+                // use default Priority and Waive Fees flags
+                this.updateFilingData('add', FilingCodes.ADDRESS_CHANGE_OT, this.isPriority, this.isWaiveFees)
               } else {
                 this.addresses = {
                   registeredOffice: {
@@ -375,12 +389,13 @@ export default {
                     mailingAddress: changeOfAddress.registeredOffice.mailingAddress
                   }
                 }
-                this.toggleFiling('add', 'OTADD')
+                // use default Priority and Waive Fees flags
+                this.updateFilingData('add', FilingCodes.ADDRESS_CHANGE_OT, this.isPriority, this.isWaiveFees)
               }
             }
           } catch (err) {
             // eslint-disable-next-line no-console
-            console.log(`fetchData() error - ${err.message}, filing =`, filing)
+            console.log(`fetchData() error - ${err.message}, filing = ${filing}`)
             this.resumeErrorDialog = true
             throw new Error('invalid change of address')
           }
@@ -405,7 +420,9 @@ export default {
     officeModifiedEventHandler (modified: boolean): void {
       this.haveChanges = true
       // when addresses change, update filing data
-      this.toggleFiling(modified ? 'add' : 'remove', 'OTADD')
+      // use default Priority and Waive Fees flags
+      this.updateFilingData(modified ? 'add' : 'remove', FilingCodes.ADDRESS_CHANGE_OT,
+        this.isPriority, this.isWaiveFees)
     },
 
     async onClickSave () {
@@ -416,7 +433,7 @@ export default {
 
       if (filing) {
         // save Filing ID for future PUTs
-        this.filingId = +filing.header.filingId
+        this.filingId = +filing.header.filingId // number
       }
       this.saving = false
     },
@@ -443,7 +460,7 @@ export default {
 
       // on success, redirect to Pay URL
       if (filing && filing.header) {
-        const filingId = +filing.header.filingId
+        const filingId: number = +filing.header.filingId
 
         // whether this is a staff or no-fee filing
         const prePaidFiling = (this.isRoleStaff || !this.isPayRequired)
@@ -483,15 +500,23 @@ export default {
 
       const header = {
         header: {
-          name: 'changeOfAddress',
+          name: FilingTypes.CHANGE_OF_ADDRESS,
           certifiedBy: this.certifiedBy || '',
           email: 'no_one@never.get',
           date: this.currentDate
         }
       }
-      // only save this if it's not null
-      if (this.routingSlipNumber) {
+      // only save Routing Slip Number if it's valid
+      if (this.routingSlipNumber && !this.isWaiveFees) {
         header.header['routingSlipNumber'] = this.routingSlipNumber
+      }
+      // only save Priority it it's valid
+      if (this.isPriority && !this.isWaiveFees) {
+        header.header['priority'] = true
+      }
+      // only save Waive Fees if it's valid
+      if (this.isWaiveFees) {
+        header.header['waiveFees'] = true
       }
 
       const business = {
@@ -502,7 +527,7 @@ export default {
         }
       }
 
-      if (this.isDataChanged('OTADD') && this.addresses) {
+      if (this.hasFilingCode(FilingCodes.ADDRESS_CHANGE_OT) && this.addresses) {
         if (this.addresses.recordsOffice) {
           changeOfAddress = {
             changeOfAddress: {
@@ -534,7 +559,7 @@ export default {
         }
       }
 
-      const filingData = {
+      const data = {
         filing: Object.assign(
           {},
           header,
@@ -550,7 +575,7 @@ export default {
           url += '?draft=true'
         }
         let filing = null
-        await axios.put(url, filingData).then(res => {
+        await axios.put(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
             throw new Error('invalid API response')
           }
@@ -579,7 +604,7 @@ export default {
           url += '?draft=true'
         }
         let filing = null
-        await axios.post(url, filingData).then(res => {
+        await axios.post(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
             throw new Error('invalid API response')
           }
@@ -604,27 +629,6 @@ export default {
       }
     },
 
-    toggleFiling (setting, filing) {
-      let added = false
-      for (let i = 0; i < this.filingData.length; i++) {
-        if (this.filingData[i].filingTypeCode === filing) {
-          if (setting === 'add') {
-            added = true
-          } else {
-            this.filingData.splice(i, 1)
-          }
-          break
-        }
-      }
-      if (setting === 'add' && !added) {
-        this.filingData.push({ filingTypeCode: filing, entityType: this.entityType })
-      }
-    },
-
-    isDataChanged (key) {
-      return this.filingData.find(o => o.filingTypeCode === key)
-    },
-
     navigateToDashboard () {
       this.haveChanges = false
       this.dialog = false
@@ -637,6 +641,7 @@ export default {
       this.saveWarnings = []
     },
 
+    /** Returns True if the specified business has any pending tasks, else False. */
     async hasTasks (businessId) {
       let hasPendingItems = false
       if (this.filingId === 0) {
@@ -645,7 +650,7 @@ export default {
             if (response && response.data && response.data.tasks) {
               response.data.tasks.forEach((task) => {
                 if (task.task && task.task.filing &&
-                  task.task.filing.header && task.task.filing.header.status !== 'NEW') {
+                  task.task.filing.header && task.task.filing.header.status !== FilingStatus.NEW) {
                   hasPendingItems = true
                 }
               })
@@ -662,15 +667,34 @@ export default {
   },
 
   watch: {
+    /** Called when Is Certified changes. */
     isCertified (val) {
       this.haveChanges = true
     },
 
+    /** Called when Certified By changes. */
     certifiedBy (val) {
       this.haveChanges = true
     },
+
+    /** Called when Routing Slip Number changes. */
     routingSlipNumber (val) {
       this.haveChanges = true
+    },
+
+    /** Called when Is Priority changes. */
+    isPriority (val: boolean): void {
+      // apply this flag to OTADD filing code only
+      // if OTADD code exists, simply re-add it with the updated Priority flag and default Waive Fees flag
+      if (this.hasFilingCode(FilingCodes.ADDRESS_CHANGE_OT)) {
+        this.updateFilingData('add', FilingCodes.ADDRESS_CHANGE_OT, val, this.isWaiveFees)
+      }
+    },
+
+    /** Called when Is Waive Fees changes. */
+    isWaiveFees (val: boolean): void {
+      // add/remove this flag to all filing codes
+      this.updateFilingData(val ? 'add' : 'remove', undefined, undefined, true)
     }
   }
 }

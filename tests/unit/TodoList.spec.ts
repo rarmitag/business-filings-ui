@@ -14,6 +14,9 @@ import flushPromises from 'flush-promises'
 // Enums
 import { EntityTypes } from '@/enums'
 
+// Components
+import { DetailsList } from '@/components/common'
+
 // NB: test util async issue
 // in some cases, the elements are not updated during the test
 // the work-around is to first initialize the property we are changing
@@ -24,7 +27,7 @@ Vue.config.silent = true
 Vue.use(Vuetify)
 Vue.use(Vuelidate)
 
-let vuetify = new Vuetify({})
+const vuetify = new Vuetify({})
 
 // Boilerplate to prevent the complaint "[Vuetify] Unable to locate target [data-app]"
 const app: HTMLDivElement = document.createElement('div')
@@ -64,7 +67,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'annualReport',
               'ARFilingYear': 2017,
-              'status': 'NEW'
+              'status': 'NEW',
+              'filingId': 1
             },
             'business': {
               'nextAnnualReport': '2017-09-17T00:00:00+00:00'
@@ -80,7 +84,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'annualReport',
               'ARFilingYear': 2018,
-              'status': 'NEW'
+              'status': 'NEW',
+              'filingId': 2
             },
             'business': {
               'nextAnnualReport': '2018-09-17T00:00:00+00:00'
@@ -96,7 +101,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'annualReport',
               'ARFilingYear': 2019,
-              'status': 'NEW'
+              'status': 'NEW',
+              'filingId': 3
             },
             'business': {
               'nextAnnualReport': '2019-09-17T00:00:00+00:00'
@@ -108,7 +114,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -146,7 +152,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'annualReport',
               'ARFilingYear': 2019,
-              'status': 'NEW'
+              'status': 'NEW',
+              'filingId': 1
             },
             'business': {
               'nextAnnualReport': '2019-09-17T00:00:00+00:00'
@@ -158,7 +165,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -170,7 +177,7 @@ describe('TodoList - UI', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.todo-label .list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent)
       .toContain('(including Address and/or Director Change)')
 
@@ -190,7 +197,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'annualReport',
               'ARFilingYear': 2019,
-              'status': 'DRAFT'
+              'status': 'DRAFT',
+              'filingId': 1
             },
             'annualReport': {
               'annualGeneralMeetingDate': '2019-07-15',
@@ -205,7 +213,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -217,7 +225,7 @@ describe('TodoList - UI', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('DRAFT')
 
     const button = item.querySelector('.list-item__actions .v-btn')
@@ -236,7 +244,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'changeOfAddress',
               'ARFilingYear': 2019,
-              'status': 'DRAFT'
+              'status': 'DRAFT',
+              'filingId': 1
             },
             'changeOfAddress': { }
           }
@@ -246,7 +255,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -258,7 +267,7 @@ describe('TodoList - UI', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Address Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Address Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('DRAFT')
 
     const button = item.querySelector('.list-item__actions .v-btn')
@@ -277,7 +286,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'changeOfDirectors',
               'ARFilingYear': 2019,
-              'status': 'DRAFT'
+              'status': 'DRAFT',
+              'filingId': 1
             },
             'changeOfDirectors': { }
           }
@@ -287,7 +297,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -299,12 +309,313 @@ describe('TodoList - UI', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Director Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Director Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('DRAFT')
 
     const button = item.querySelector('.list-item__actions .v-btn')
     expect(button.disabled).toBe(false)
     expect(button.querySelector('.v-btn__content').textContent).toContain('Resume')
+
+    wrapper.destroy()
+  })
+
+  it('displays a DRAFT \'Correction\' task for a client', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'correction',
+              'status': 'DRAFT',
+              'filingId': 1,
+              'comments': [
+                {
+                  'comment': {
+                    'comment': 'Correction for Annual Report (2017). Filed on 2018-01-08.',
+                    'filingId': 1,
+                    'id': 123,
+                    'submitterDisplayName': 'cbIdIr1234',
+                    'timestamp': '2020-03-02T20:26:31.697044+00:00'
+                  }
+                }
+              ]
+            },
+            'correction': {
+              'correctedFilingType': 'annualReport'
+            }
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+
+    expect(vm.taskItems.length).toEqual(1)
+    expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
+    expect(wrapper.emitted('todo-count')).toEqual([[1]])
+    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(vm.$el.querySelector('.no-results')).toBeNull()
+
+    const item = vm.$el.querySelector('.list-item')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Correction')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Annual Report')
+    expect(item.querySelector('.list-item__subtitle').textContent).toContain('DRAFT')
+
+    // Validate the resume button does not exist for NON-staff
+    expect(item.querySelector('.list-item__actions .v-btn')).toBeNull()
+
+    wrapper.destroy()
+  })
+
+  it('displays a DRAFT \'Correction\' task for staff', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'correction',
+              'status': 'DRAFT',
+              'filingId': 1,
+              'comments': [
+                {
+                  'comment': {
+                    'comment': 'Correction for Annual Report (2017). Filed on 2018-01-08.',
+                    'filingId': 1,
+                    'id': 123,
+                    'submitterDisplayName': 'cbIdIr1234',
+                    'timestamp': '2020-03-02T20:26:31.697044+00:00'
+                  }
+                }
+              ]
+            },
+            'correction': {
+              'correctedFilingType': 'annualReport'
+            }
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+    // Only staff may resume drafts
+    store.state.keycloakRoles = ['staff']
+
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+
+    expect(vm.taskItems.length).toEqual(1)
+    expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
+    expect(wrapper.emitted('todo-count')).toEqual([[1]])
+    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(vm.$el.querySelector('.no-results')).toBeNull()
+
+    const item = vm.$el.querySelector('.list-item')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Correction')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Annual Report')
+    expect(item.querySelector('.list-item__subtitle').textContent).toContain('DRAFT')
+
+    // Validate the resume button exists and is enabled for Staff
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.disabled).toBe(false)
+    expect(button.querySelector('.v-btn__content').textContent).toContain('Resume')
+
+    wrapper.destroy()
+  })
+
+  it('displays a DetailsList on a DRAFT \'Correction\' task', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'correction',
+              'status': 'DRAFT',
+              'filingId': 1,
+              'comments': [
+                {
+                  'comment': {
+                    'comment': 'Correction for Annual Report (2017). Filed on 2018-01-08.',
+                    'filingId': 1,
+                    'id': 123,
+                    'submitterDisplayName': 'cbIdIr1234',
+                    'timestamp': '2020-03-02T20:26:31.697044+00:00'
+                  }
+                }
+              ]
+            },
+            'correction': {
+              'correctedFilingType': 'annualReport'
+            }
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    // Only staff may resume drafts
+    store.state.keycloakRoles = ['user']
+
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+
+    expect(vm.taskItems.length).toEqual(1)
+    expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
+    expect(wrapper.emitted('todo-count')).toEqual([[1]])
+    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(vm.$el.querySelector('.no-results')).toBeNull()
+
+    const item = vm.$el.querySelector('.list-item')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Correction')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Annual Report')
+    expect(item.querySelector('.list-item__subtitle').textContent).toContain('DRAFT')
+
+    expect(item.querySelector('.list-item__subtitle .todo-status').textContent)
+      .toContain('Detail (1)')
+
+    // Validate the child component does NOT exist on the parent before opening the dropdown
+    expect(wrapper.find(DetailsList).exists()).toBe(false)
+
+    // Open the details list dropdown
+    const button = item.querySelector('.list-item__subtitle .todo-status .info-btn')
+    await button.click()
+
+    expect(vm.$el.querySelector('#todo-list .todo-list-detail').textContent)
+      .toContain('This filing is in review and has been saved as a draft.')
+
+    // Validate that the resume button does not exist for NON-Staff
+    expect(item.querySelector('.list-item__actions .v-btn')).toBeNull()
+
+    // Validate the child component exists on the parent after opening the dropdown
+    expect(wrapper.find(DetailsList).exists()).toBe(true)
+
+    wrapper.destroy()
+  })
+
+  it('displays a PENDING_CORRECTION \'Correction\' task', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'correction',
+              'ARFilingYear': 2019,
+              'status': 'PENDING_CORRECTION',
+              'paymentToken': 12345678,
+              'filingId': 1
+            },
+            'annualReport': {
+              'annualGeneralMeetingDate': '2019-07-15',
+              'annualReportDate': '2019-07-15'
+            },
+            'correction': {
+              'correctedFilingType': 'annualReport'
+            }
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+
+    expect(vm.taskItems.length).toEqual(1)
+    expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
+    expect(wrapper.emitted('todo-count')).toEqual([[1]])
+    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(vm.$el.querySelector('.no-results')).toBeNull()
+
+    const item = vm.$el.querySelector('.list-item')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Correction')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Annual Report')
+    expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
+
+    wrapper.destroy()
+  })
+
+  it('displays a DetailsList on a PENDING \'Correction\' task', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'correction',
+              'status': 'PENDING_CORRECTION',
+              'filingId': 1,
+              'comments': [
+                {
+                  'comment': {
+                    'comment': 'Correction for Annual Report (2017). Filed on 2018-01-08.',
+                    'filingId': 1,
+                    'id': 123,
+                    'submitterDisplayName': 'cbIdIr1234',
+                    'timestamp': '2020-03-02T20:26:31.697044+00:00'
+                  }
+                }
+              ]
+            },
+            'correction': {
+              'correctedFilingType': 'annualReport'
+            }
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
+    const vm = wrapper.vm as any
+
+    await flushPromises()
+
+    expect(vm.taskItems.length).toEqual(1)
+    expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
+    expect(wrapper.emitted('todo-count')).toEqual([[1]])
+    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(vm.$el.querySelector('.no-results')).toBeNull()
+
+    const item = vm.$el.querySelector('.list-item')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Correction')
+    expect(item.querySelector('.list-item__title').textContent).toContain('Annual Report')
+    expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
+
+    expect(item.querySelector('.list-item__subtitle .todo-status').textContent)
+      .toContain('Detail (1)')
+
+    // Validate the child component does NOT exist on the parent before opening the dropdown
+    expect(wrapper.find(DetailsList).exists()).toBe(false)
+
+    // Open the details list dropdown
+    const button = item.querySelector('.list-item__subtitle .todo-status .info-btn')
+    await button.click()
+
+    expect(vm.$el.querySelector('#todo-list .todo-list-detail').textContent)
+      .toContain('This filing is pending review by Registry Staff.')
+
+    // Validate that the resume button does not exist for NON-Staff
+    expect(item.querySelector('.list-item__actions .v-btn')).toBeNull()
+
+    // Validate the child component exists on the parent after opening the dropdown
+    expect(wrapper.find(DetailsList).exists()).toBe(true)
 
     wrapper.destroy()
   })
@@ -319,7 +630,8 @@ describe('TodoList - UI', () => {
               'name': 'annualReport',
               'ARFilingYear': 2019,
               'status': 'PENDING',
-              'paymentToken': 12345678
+              'paymentToken': 12345678,
+              'filingId': 1
             },
             'annualReport': {
               'annualGeneralMeetingDate': '2019-07-15',
@@ -334,7 +646,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -346,7 +658,7 @@ describe('TodoList - UI', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAYMENT INCOMPLETE')
 
@@ -367,7 +679,8 @@ describe('TodoList - UI', () => {
               'name': 'annualReport',
               'ARFilingYear': 2019,
               'status': 'ERROR',
-              'paymentToken': 12345678
+              'paymentToken': 12345678,
+              'filingId': 1
             },
             'annualReport': {
               'annualGeneralMeetingDate': '2019-07-15',
@@ -382,7 +695,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -394,7 +707,7 @@ describe('TodoList - UI', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAYMENT UNSUCCESSFUL')
 
@@ -414,7 +727,8 @@ describe('TodoList - UI', () => {
             'header': {
               'name': 'changeOfDirectors',
               'status': 'PAID',
-              'paymentToken': 12345678
+              'paymentToken': 12345678,
+              'filingId': 1
             },
             'changeOfDirectors': { }
           }
@@ -424,7 +738,7 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -436,7 +750,7 @@ describe('TodoList - UI', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Director Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Director Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAID')
 
     const button = item.querySelector('.list-item__actions .v-btn')
@@ -472,8 +786,6 @@ describe('TodoList - UI', () => {
       } })
     const vm = wrapper.vm as any
 
-    // wrapper.setProps({ inProcessFiling: 123 })
-
     await flushPromises()
 
     expect(vm.taskItems.length).toEqual(1)
@@ -484,7 +796,7 @@ describe('TodoList - UI', () => {
 
     const item = vm.$el.querySelector('.list-item')
     expect(vm.taskItems[0].id).toEqual(wrapper.props('inProcessFiling'))
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Director Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Director Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PROCESSING...')
 
@@ -529,7 +841,7 @@ describe('TodoList - UI', () => {
 
     const item = vm.$el.querySelector('.list-item')
     expect(vm.taskItems[0].id).not.toEqual(wrapper.props('inProcessFiling'))
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Director Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Director Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAYMENT INCOMPLETE')
 
@@ -618,7 +930,7 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -676,7 +988,7 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -688,7 +1000,7 @@ describe('TodoList - UI - BCOMP', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.bcorps-ar-subtitle').textContent)
       .toContain('Verify your Office Address and Current Directors before filing your Annual Report.')
 
@@ -723,7 +1035,7 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -735,12 +1047,12 @@ describe('TodoList - UI - BCOMP', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.bcorps-ar-subtitle').textContent)
       .toContain('Verify your Office Address and Current Directors before filing your Annual Report.')
 
     const button = item.querySelector('.list-item__actions .v-btn')
-    expect(button.disabled).toBe(true)
+    expect(button.disabled).toBe(true) // TODO: fix
     expect(button.querySelector('.v-btn__content').textContent).toContain('File Annual Report')
 
     wrapper.destroy()
@@ -771,7 +1083,7 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -783,7 +1095,7 @@ describe('TodoList - UI - BCOMP', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAYMENT INCOMPLETE')
 
@@ -819,7 +1131,7 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -831,7 +1143,7 @@ describe('TodoList - UI - BCOMP', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File 2019 Annual Report')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File 2019 Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAYMENT UNSUCCESSFUL')
 
@@ -861,7 +1173,7 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     await flushPromises()
@@ -873,7 +1185,7 @@ describe('TodoList - UI - BCOMP', () => {
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Director Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Director Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAID')
 
     const button = item.querySelector('.list-item__actions .v-btn')
@@ -921,7 +1233,7 @@ describe('TodoList - UI - BCOMP', () => {
 
     const item = vm.$el.querySelector('.list-item')
     expect(vm.taskItems[0].id).toEqual(wrapper.props('inProcessFiling'))
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Director Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Director Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PROCESSING...')
 
@@ -966,7 +1278,7 @@ describe('TodoList - UI - BCOMP', () => {
 
     const item = vm.$el.querySelector('.list-item')
     expect(vm.taskItems[0].id).not.toEqual(wrapper.props('inProcessFiling'))
-    expect(item.querySelector('.list-item__title').textContent).toEqual('File Director Change')
+    expect(item.querySelector('.list-item__title').textContent).toContain('File Director Change')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('PAYMENT INCOMPLETE')
 
@@ -1001,7 +1313,8 @@ describe('TodoList - Click Tests', () => {
             'header': {
               'name': 'annualReport',
               'ARFilingYear': 2019,
-              'status': 'NEW'
+              'status': 'NEW',
+              'filingId': 1
             },
             'business': {
               'nextAnnualReport': '2017-09-17T00:00:00+00:00'
@@ -1017,7 +1330,7 @@ describe('TodoList - Click Tests', () => {
     const localVue = createLocalVue()
     localVue.use(VueRouter)
     const router = mockRouter.mock()
-    const wrapper = mount(TodoList, { localVue, store, router, vuetify })
+    const wrapper = mount(TodoList, { localVue, store, router, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     Vue.nextTick(async () => {
@@ -1025,7 +1338,7 @@ describe('TodoList - Click Tests', () => {
 
       const item = vm.$el.querySelector('.list-item')
       const button = item.querySelector('.list-item__actions .v-btn')
-      expect(button.querySelector('.v-btn__content').textContent).toContain('File Annual Report')
+      expect(button.textContent).toContain('File Annual Report')
 
       await button.click()
 
@@ -1236,7 +1549,7 @@ describe('TodoList - Click Tests - BCOMPs', () => {
     const localVue = createLocalVue()
     localVue.use(VueRouter)
     const router = mockRouter.mock()
-    const wrapper = mount(TodoList, { localVue, store, router, vuetify })
+    const wrapper = mount(TodoList, { localVue, store, router, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
 
     Vue.nextTick(async () => {
@@ -1388,7 +1701,7 @@ describe('TodoList - Delete Draft', () => {
   const { assign } = window.location
   let deleteCall
 
-  beforeEach(async () => {
+  beforeEach(() => {
     deleteCall = sinon.stub(axios, 'delete')
   })
 
@@ -1547,7 +1860,7 @@ describe('TodoList - Cancel Payment', () => {
   const { assign } = window.location
   let patchCall
 
-  beforeEach(async () => {
+  beforeEach(() => {
     patchCall = sinon.stub(axios, 'patch')
   })
 

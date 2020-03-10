@@ -1,136 +1,200 @@
 import Vue from 'vue'
 import Vuetify from 'vuetify'
 import { mount } from '@vue/test-utils'
-import StaffPayment from '@/components/AnnualReport/StaffPayment.vue'
+import { StaffPayment } from '@/components/common'
 
 Vue.use(Vuetify)
 // suppress "avoid mutating a prop directly" warnings
 // https://vue-test-utils.vuejs.org/api/config.html#silent
 Vue.config.silent = true
 
-let vuetify = new Vuetify({})
+const vuetify = new Vuetify({})
+
+const PAYMENT_RECEIVED = 0
+const NO_FEE = 1
 
 describe('StaffPayment', () => {
-  it('initializes correctly with no prop', async () => {
-    const wrapper = mount(StaffPayment,
-      {
-        propsData: { value: null },
-        vuetify
-      })
+  it('initializes correctly with no props', async () => {
+    const wrapper = mount(StaffPayment, { vuetify })
+    await Vue.nextTick()
 
-    // check that:
-    // 1. value is initially null
-    // 2. component is initially invalid
-    expect(wrapper.emitted('update:value')).toEqual([[null]])
-    expect(wrapper.emitted('valid')).toEqual([[false]])
+    // verify properties
+    const vm: any = wrapper.vm
+    expect(vm.routingSlipNumber).toBe('')
+    expect(vm.isPriority).toBeFalsy()
+    expect(vm.isWaiveFees).toBeFalsy()
+    expect(vm.paymentOption).toBe(PAYMENT_RECEIVED)
 
-    wrapper.destroy()
-  })
+    // verify displayed text
+    expect(wrapper.find('.payment-container').text()).toContain('Payment')
 
-  it('initializes correctly with prop', async () => {
-    const wrapper = mount(StaffPayment,
-      {
-        propsData: { value: '123456789' },
-        vuetify
-      })
+    // verify control states
+    expect(wrapper.find('#payment-received-radio').attributes()['aria-checked']).toBe('true')
+    expect(wrapper.find('#priority-checkbox').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#no-fee-radio').attributes()['aria-checked']).toBe('false')
 
-    // check that:
-    // 1. value is initially set
-    // 2. component is initially valid
-    expect(wrapper.emitted('update:value')).toEqual([['123456789']])
-    setTimeout(() => {
-      expect(wrapper.emitted('valid')).toEqual([[true]])
-    }, 100)
+    // verify that component is invalid
+    expect(wrapper.emitted('valid').pop()).toEqual([false])
 
     wrapper.destroy()
   })
 
-  it('becomes valid when prop becomes valid', async () => {
+  it('initializes correctly with Routing Slip Number prop', async () => {
     const wrapper = mount(StaffPayment,
       {
-        propsData: { value: null },
-        vuetify
+        vuetify,
+        propsData: { routingSlipNumber: '123456789', isPriority: true }
       })
+    await Vue.nextTick()
 
-    wrapper.setProps({ value: '123456789' })
+    // verify properties
+    const vm: any = wrapper.vm
+    expect(vm.routingSlipNumber).toBe('123456789')
+    expect(vm.isPriority).toBe(true)
+    expect(vm.isWaiveFees).toBeFalsy()
+    expect(vm.paymentOption).toBe(PAYMENT_RECEIVED)
 
-    // check that:
-    // 1. value was initially null
-    // 2. value became set
-    // 3. component was initially invalid
-    // 4. component became valid
-    expect(wrapper.emitted('update:value')).toEqual([[null], ['123456789']])
-    setTimeout(() => {
-      expect(wrapper.emitted('valid')).toEqual([[false], [true]])
-    }, 100)
-    wrapper.destroy()
-  })
+    // verify control states
+    expect(wrapper.find('#payment-received-radio').attributes()['aria-checked']).toBe('true')
+    expect(wrapper.find('#priority-checkbox').attributes()['aria-checked']).toBe('true')
+    expect(wrapper.find('#no-fee-radio').attributes()['aria-checked']).toBe('false')
 
-  it('becomes invalid when prop becomes invalid', async () => {
-    const wrapper = mount(StaffPayment,
-      {
-        propsData: { value: '123456789' },
-        vuetify
-      })
-
-    wrapper.setProps({ value: null })
-
-    // NB: can't check error message because Vuetify renders it outside this component
-
-    // check that:
-    // 1. value was initially set
-    // 2. value became null
-    // 3. component was initially valid
-    // 4. component became invalid
-    expect(wrapper.emitted('update:value')).toEqual([['123456789'], [null]])
-    setTimeout(() => {
-      expect(wrapper.emitted('valid')).toEqual([[true], [false]])
-    }, 100)
+    // verify that component is valid
+    expect(wrapper.emitted('valid').pop()).toEqual([true])
 
     wrapper.destroy()
   })
 
-  it('becomes valid when input becomes valid', async () => {
+  it('initializes correctly with Is Waive Fees prop', async () => {
     const wrapper = mount(StaffPayment,
       {
-        propsData: { value: null },
-        vuetify
+        vuetify,
+        propsData: { isWaiveFees: true }
       })
+    await Vue.nextTick()
 
-    wrapper.setData({ routingSlipNumber: '123456789' })
+    // verify properties
+    const vm: any = wrapper.vm
+    expect(vm.routingSlipNumber).toBe('')
+    expect(vm.isPriority).toBeFalsy()
+    expect(vm.isWaiveFees).toBe(true)
+    expect(vm.paymentOption).toBe(NO_FEE)
 
-    // check that:
-    // 1. value was initially null
-    // 2. value became set
-    // 3. component was initially invalid
-    // 4. component became valid
-    expect(wrapper.emitted('update:value')).toEqual([[null], ['123456789']])
-    setTimeout(() => {
-      expect(wrapper.emitted('valid')).toEqual([[false], [true]])
-    }, 100)
+    // verify control states
+    expect(wrapper.find('#payment-received-radio').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#priority-checkbox').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#no-fee-radio').attributes()['aria-checked']).toBe('true')
+
+    // verify that component is valid
+    expect(wrapper.emitted('valid').pop()).toEqual([true])
+
     wrapper.destroy()
   })
 
-  it('becomes invalid when input becomes invalid', async () => {
+  it('becomes valid when Routing Slip Number prop becomes valid', async () => {
+    const wrapper = mount(StaffPayment, { vuetify })
+
+    wrapper.setProps({ routingSlipNumber: '123456789' })
+    await Vue.nextTick()
+
+    // verify properties
+    const vm: any = wrapper.vm
+    expect(vm.routingSlipNumber).toBe('123456789')
+    expect(vm.isPriority).toBeFalsy()
+    expect(vm.isWaiveFees).toBeFalsy()
+    expect(vm.paymentOption).toBe(PAYMENT_RECEIVED)
+
+    // verify control states
+    expect(wrapper.find('#payment-received-radio').attributes()['aria-checked']).toBe('true')
+    expect(wrapper.find('#priority-checkbox').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#no-fee-radio').attributes()['aria-checked']).toBe('false')
+
+    // verify that component is valid
+    expect(wrapper.emitted('valid').pop()).toEqual([true])
+
+    wrapper.destroy()
+  })
+
+  it('becomes valid when Is Waive Fees prop becomes valid', async () => {
+    const wrapper = mount(StaffPayment, { vuetify })
+
+    wrapper.setProps({ isWaiveFees: true })
+    await Vue.nextTick()
+
+    // verify properties
+    const vm: any = wrapper.vm
+    expect(vm.routingSlipNumber).toBe('')
+    expect(vm.isPriority).toBeFalsy()
+    expect(vm.isWaiveFees).toBe(true)
+    expect(vm.paymentOption).toBe(NO_FEE)
+
+    // verify control states
+    expect(wrapper.find('#payment-received-radio').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#priority-checkbox').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#no-fee-radio').attributes()['aria-checked']).toBe('true')
+
+    // verify that component is valid
+    expect(wrapper.emitted('valid').pop()).toEqual([true])
+
+    wrapper.destroy()
+  })
+
+  it('becomes invalid when Routing Slip Number prop becomes invalid', async () => {
     const wrapper = mount(StaffPayment,
       {
-        propsData: { value: '123456789' },
-        vuetify
+        vuetify,
+        propsData: { routingSlipNumber: '123456789' }
       })
 
-    wrapper.setData({ routingSlipNumber: null })
+    wrapper.setProps({ routingSlipNumber: '' })
+    await Vue.nextTick()
 
-    // NB: can't check error message because Vuetify renders it outside this component
+    // verify properties
+    const vm: any = wrapper.vm
+    expect(vm.routingSlipNumber).toBe('')
+    expect(vm.isPriority).toBeFalsy()
+    expect(vm.isWaiveFees).toBeFalsy()
+    expect(vm.paymentOption).toBe(PAYMENT_RECEIVED)
 
-    // check that:
-    // 1. value was initially set
-    // 2. value became null
-    // 3. component was initially valid
-    // 4. component became invalid
-    expect(wrapper.emitted('update:value')).toEqual([['123456789'], [null]])
-    setTimeout(() => {
-      expect(wrapper.emitted('valid')).toEqual([[true], [false]])
-    }, 100)
+    // verify control states
+    expect(wrapper.find('#payment-received-radio').attributes()['aria-checked']).toBe('true')
+    expect(wrapper.find('#priority-checkbox').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#no-fee-radio').attributes()['aria-checked']).toBe('false')
+
+    // NB: can't verify error message because Vuetify renders it outside this component
+
+    // verify that component is invalid
+    expect(wrapper.emitted('valid').pop()).toEqual([false])
+
+    wrapper.destroy()
+  })
+
+  it('becomes invalid when Is Waive Fees prop becomes invalid', async () => {
+    const wrapper = mount(StaffPayment,
+      {
+        vuetify,
+        propsData: { isWaiveFees: true }
+      })
+
+    wrapper.setProps({ isWaiveFees: false })
+    await Vue.nextTick()
+
+    // verify properties
+    const vm: any = wrapper.vm
+    expect(vm.routingSlipNumber).toBe('')
+    expect(vm.isPriority).toBeFalsy()
+    expect(vm.isWaiveFees).toBe(false)
+    expect(vm.paymentOption).toBe(PAYMENT_RECEIVED)
+
+    // verify control states
+    expect(wrapper.find('#payment-received-radio').attributes()['aria-checked']).toBe('true')
+    expect(wrapper.find('#priority-checkbox').attributes()['aria-checked']).toBe('false')
+    expect(wrapper.find('#no-fee-radio').attributes()['aria-checked']).toBe('false')
+
+    // NB: can't verify error message because Vuetify renders it outside this component
+
+    // verify that component is invalid
+    expect(wrapper.emitted('valid').pop()).toEqual([false])
 
     wrapper.destroy()
   })

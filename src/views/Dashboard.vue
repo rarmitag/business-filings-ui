@@ -27,6 +27,7 @@
                 @todo-filings="todoListFilings = $event"
                 :inProcessFiling="inProcessFiling"
                 :coaPending="coaPending"
+                :hasBlockerFiling="hasBlockerFiling"
               />
             </section>
 
@@ -182,7 +183,7 @@ export default {
 
       let filingId = null
       // NB: use unary plus operator to cast string to number
-      if (this.$route !== undefined) filingId = +this.$route.query.filing_id // if missing, this is NaN
+      if (this.$route !== undefined) filingId = +this.$route.query.filing_id // if missing, this is NaN (false)
 
       // only consider refreshing the dashboard if we came from a filing
       if (!filingId) return

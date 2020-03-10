@@ -10,16 +10,14 @@ import store from '@/store/store'
 import mockRouter from './mockRouter'
 import flushPromises from 'flush-promises'
 import { BAD_REQUEST } from 'http-status-codes'
-import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
+import { shallowMount, createLocalVue, mount, Wrapper } from '@vue/test-utils'
 
 // Components
 import AnnualReport from '@/views/AnnualReport.vue'
 import AgmDate from '@/components/AnnualReport/AGMDate.vue'
-import Directors from '@/components/AnnualReport/Directors.vue'
-import Certify from '@/components/AnnualReport/Certify.vue'
-import ArDate from '@/components/AnnualReport/BCorp/ARDate.vue'
-import StaffPayment from '@/components/AnnualReport/StaffPayment.vue'
-import { OfficeAddresses, SummaryDirectors, SummaryOfficeAddresses } from '@/components/common'
+import Directors from '@/components/common/Directors.vue'
+import ArDate from '@/components/AnnualReport/ARDate.vue'
+import { Certify, OfficeAddresses, StaffPayment, SummaryDirectors, SummaryOfficeAddresses } from '@/components/common'
 import { configJson } from '@/resources/business-config'
 
 // Enums
@@ -31,7 +29,7 @@ Vue.use(Vuelidate)
 // ref: https://github.com/vuejs/vue-test-utils/issues/532
 Vue.config.silent = true
 
-let vuetify = new Vuetify({})
+const vuetify = new Vuetify({})
 
 describe('AnnualReport - Part 1 - UI', () => {
   beforeEach(() => {
@@ -76,13 +74,8 @@ describe('AnnualReport - Part 1 - UI', () => {
     const $route = { params: { id: 0 } } // new filing id
     const wrapper = shallowMount(AnnualReport, { store, mocks: { $route } })
 
-    // component should be displayed when totalFee > 0
-    wrapper.setData({ totalFee: 1 })
+    // component should be displayed
     expect(wrapper.find(StaffPayment).exists()).toBe(true)
-
-    // component should not be displayed when totalFee <= 0
-    wrapper.setData({ totalFee: 0 })
-    expect(wrapper.find(StaffPayment).exists()).toBe(false)
 
     // reset store
     // NB: this is important for subsequent tests
@@ -126,7 +119,6 @@ describe('AnnualReport - Part 1 - UI', () => {
 
     // confirm that flags are set correctly
     expect(vm.validated).toEqual(true)
-    expect(vm.isSaveButtonEnabled).toEqual(true)
 
     wrapper.destroy()
   })
@@ -145,7 +137,6 @@ describe('AnnualReport - Part 1 - UI', () => {
 
     // confirm that flags are set correctly
     expect(vm.validated).toEqual(false)
-    expect(vm.isSaveButtonEnabled).toEqual(false)
 
     wrapper.destroy()
   })
@@ -164,7 +155,6 @@ describe('AnnualReport - Part 1 - UI', () => {
 
     // confirm that flags are set correctly
     expect(vm.validated).toEqual(false)
-    expect(vm.isSaveButtonEnabled).toEqual(false)
 
     wrapper.destroy()
   })
@@ -297,7 +287,6 @@ describe('AnnualReport - Part 1 - UI', () => {
 
     // confirm that flags are set correctly
     expect(vm.validated).toEqual(false)
-    expect(vm.isSaveButtonEnabled).toEqual(false)
 
     wrapper.destroy()
   })
@@ -316,7 +305,6 @@ describe('AnnualReport - Part 1 - UI', () => {
 
     // confirm that flags are set correctly
     expect(vm.validated).toEqual(false)
-    expect(vm.isSaveButtonEnabled).toEqual(true)
 
     wrapper.destroy()
   })
@@ -331,6 +319,7 @@ describe('AnnualReport - Part 1 - UI', () => {
     vm.addressesFormValid = true
     vm.directorFormValid = true
     vm.certifyFormValid = true
+
     // set properties to make only staff payment invalid
     store.state.keycloakRoles = ['staff']
     vm.totalFee = 1
@@ -447,7 +436,7 @@ describe('AnnualReport - Part 1 - UI', () => {
   })
 })
 
-describe('AnnualReport - Part 1B - UI - BCOMP', () => {
+describe('AnnualReport - Part 1B - UI (BCOMP)', () => {
   beforeEach(() => {
     // init store
     store.state.entityIncNo = 'BC0007291'
@@ -477,13 +466,8 @@ describe('AnnualReport - Part 1B - UI - BCOMP', () => {
     const $route = { params: { id: 0 } } // new filing id
     const wrapper = shallowMount(AnnualReport, { store, mocks: { $route } })
 
-    // component should be displayed when totalFee > 0
-    wrapper.setData({ totalFee: 1 })
+    // component should be displayed
     expect(wrapper.find(StaffPayment).exists()).toBe(true)
-
-    // component should not be displayed when totalFee <= 0
-    wrapper.setData({ totalFee: 0 })
-    expect(wrapper.find(StaffPayment).exists()).toBe(false)
 
     // reset store
     // NB: this is important for subsequent tests
@@ -655,7 +639,7 @@ describe('AnnualReport - Part 1B - UI - BCOMP', () => {
 })
 
 describe('AnnualReport - Part 2 - Resuming', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityName = 'Legal Name - CP0001191'
@@ -689,7 +673,11 @@ describe('AnnualReport - Part 2 - Resuming', () => {
                   certifiedBy: 'Full Name',
                   email: 'no_one@never.get',
                   filingId: 123,
-                  routingSlipNumber: '456'
+                  routingSlipNumber: '456',
+                  // NB: it's not valid to have both "priority" and "waiveFees" true
+                  // but we're just testing that these values are restored properly
+                  priority: true,
+                  waiveFees: true
                 }
               }
             }
@@ -718,8 +706,10 @@ describe('AnnualReport - Part 2 - Resuming', () => {
       expect(vm.certifiedBy).toBe('Full Name')
       expect(vm.isCertified).toBe(false)
 
-      // verify that Routing Slip Number was restored
+      // verify that Staff Payment fields were restored
       expect(vm.routingSlipNumber).toBe('456')
+      expect(vm.isPriority).toBe(true)
+      expect(vm.isWaiveFees).toBe(true)
 
       // verify that we stored the Filing ID
       expect(+vm.filingId).toBe(123)
@@ -746,7 +736,7 @@ describe('AnnualReport - Part 3 - Submitting', () => {
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityType = EntityTypes.COOP
@@ -754,9 +744,15 @@ describe('AnnualReport - Part 3 - Submitting', () => {
     store.state.ARFilingYear = 2017
     store.state.currentFilingStatus = 'NEW'
 
+    const sinonAxiosGet = sinon.stub(axios, 'get')
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinonAxiosGet
+      .withArgs('CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
+
     // mock "fetch a draft filing" endpoint
-    sinon
-      .stub(axios, 'get')
+    sinonAxiosGet
       .withArgs('CP0001191/filings/123')
       .returns(
         new Promise(resolve =>
@@ -902,7 +898,7 @@ describe('AnnualReport - Part 3 - Submitting', () => {
     vm.directorFormValid = true
     vm.certifyFormValid = true
     vm.directorEditInProgress = false
-    vm.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'CP' }] // dummy data
+    store.state.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'CP' }] // dummy data
 
     // stub address data
     vm.addresses = {
@@ -973,7 +969,7 @@ describe('AnnualReport - Part 3 - Submitting', () => {
     vm.directorFormValid = true
     vm.certifyFormValid = true
     vm.directorEditInProgress = false
-    vm.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'CP' }] // dummy data
+    store.state.filingData = [{ filingTypeCode: 'OTCDR', entityType: 'CP' }] // dummy data
 
     // stub address data
     vm.addresses = {
@@ -1006,7 +1002,7 @@ describe('AnnualReport - Part 3 - Submitting', () => {
   })
 })
 
-describe('AnnualReport - Part 3B - Submitting - BCOMP', () => {
+describe('AnnualReport - Part 3B - Submitting (BCOMP)', () => {
   const { assign } = window.location
 
   beforeAll(() => {
@@ -1019,7 +1015,7 @@ describe('AnnualReport - Part 3B - Submitting - BCOMP', () => {
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'BC0007291'
     store.state.entityName = 'Legal Name - BC0007291'
@@ -1029,6 +1025,12 @@ describe('AnnualReport - Part 3B - Submitting - BCOMP', () => {
     store.state.currentFilingStatus = 'NEW'
     store.state.registeredAddress = {}
     store.state.recordsAddress = {}
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('BC0007291/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
 
     // mock "save and file" endpoint
     sinon
@@ -1105,7 +1107,7 @@ describe('AnnualReport - Part 3B - Submitting - BCOMP', () => {
     // make sure form is validated
     vm.staffPaymentFormValid = true
     vm.certifyFormValid = true
-    vm.filingData = [{ filingTypeCode: 'ANNBC', entityType: 'BC' }] // dummy data
+    store.state.filingData = [{ filingTypeCode: 'ANNBC', entityType: 'BC' }] // dummy data
 
     // make sure a fee is required
     vm.totalFee = 100
@@ -1128,16 +1130,22 @@ describe('AnnualReport - Part 3B - Submitting - BCOMP', () => {
 })
 
 describe('AnnualReport - Part 4 - Saving', () => {
-  let wrapper
-  let vm
+  let wrapper: Wrapper<Vue>
+  let vm: any
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityType = EntityTypes.COOP
     store.state.entityName = 'Legal Name - CP0001191'
     store.state.ARFilingYear = 2017
     store.state.currentFilingStatus = 'NEW'
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
 
     // mock "save draft" endpoint
     sinon
@@ -1180,7 +1188,7 @@ describe('AnnualReport - Part 4 - Saving', () => {
     router.push({ name: 'annual-report', params: { id: '0' } }) // new filing id
 
     wrapper = shallowMount(AnnualReport, { store, localVue, router, vuetify })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
   })
 
   afterEach(() => {
@@ -1265,19 +1273,25 @@ describe('AnnualReport - Part 4 - Saving', () => {
 })
 
 describe('AnnualReport - Part 5 - Data', () => {
-  let wrapper
-  let vm
+  let wrapper: Wrapper<Vue>
+  let vm: any
   let spy
 
   const currentFilingYear = 2017
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityType = EntityTypes.COOP
     store.state.entityName = 'Legal Name - CP0001191'
     store.state.ARFilingYear = currentFilingYear
     store.state.currentFilingStatus = 'NEW'
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
 
     // mock "save draft" endpoint - garbage response data, we aren't testing that
     spy = sinon
@@ -1306,7 +1320,7 @@ describe('AnnualReport - Part 5 - Data', () => {
     router.push({ name: 'annual-report', params: { id: '0' } }) // new filing id
 
     wrapper = shallowMount(AnnualReport, { store, localVue, router, vuetify })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
 
     // set up director data
     vm.allDirectors = [
@@ -1398,6 +1412,7 @@ describe('AnnualReport - Part 5 - Data', () => {
     // - the first index (0) is to get the first call, where there could be many calls to the stubbed function
     // - the second index (1) is to get the second param - data - where the call is axios.post(url, data)
     const payload = spy.args[0][1]
+
     // basic tests to pass ensuring structure of payload is as expected
     expect(payload.filing).toBeDefined()
     expect(payload.filing.annualReport).toBeDefined()
@@ -1523,23 +1538,30 @@ describe('AnnualReport - Part 5 - Data', () => {
   })
 })
 
-describe('AnnualReport - Part 5B - Data - BCOMP', () => {
-  let wrapper
-  let vm
-  let spy
+describe('AnnualReport - Part 5B - Data (BCOMP)', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
+  let spy: any
 
   const currentFilingYear = 2018
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'BC0007291'
     store.state.entityName = 'Legal Name - BC0007291'
     store.state.entityType = EntityTypes.BCOMP
     store.state.ARFilingYear = 2018
+    store.state.currentDate = '2018-09-26'
     store.state.nextARDate = '2019-09-26T00:00:00+00:00'
     store.state.currentFilingStatus = 'NEW'
     store.state.registeredAddress = {}
     store.state.recordsAddress = {}
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('BC0007291/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
 
     // mock "save" endpoint - garbage response data, we aren't testing that
     spy = sinon
@@ -1585,7 +1607,7 @@ describe('AnnualReport - Part 5B - Data - BCOMP', () => {
       },
       vuetify
     })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
 
     // set up director data
     vm.allDirectors = [
@@ -1737,10 +1759,9 @@ describe('AnnualReport - Part 5B - Data - BCOMP', () => {
   })
 })
 
-describe('AnnualReport - Part 6 - Error/Warning dialogs', () => {
-  let wrapper
-  let vm
-  const request = require('request')
+describe('AnnualReport - Part 6 - Error/Warning Dialogs', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
   const { assign } = window.location
 
   beforeAll(() => {
@@ -1753,13 +1774,19 @@ describe('AnnualReport - Part 6 - Error/Warning dialogs', () => {
     window.location.assign = assign
   })
 
-  beforeEach(async () => {
+  beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
     store.state.entityType = EntityTypes.COOP
     store.state.entityName = 'Legal Name - CP0001191'
     store.state.ARFilingYear = 2017
     store.state.currentFilingStatus = 'NEW'
+
+    // mock "get tasks" endpoint - needed for hasTasks()
+    sinon
+      .stub(axios, 'get')
+      .withArgs('CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
 
     // mock "file post" endpoint
     const p1 = Promise.reject({
@@ -1854,6 +1881,7 @@ describe('AnnualReport - Part 6 - Error/Warning dialogs', () => {
       .stub(axios, 'put')
       .withArgs('CP0001191/filings/123')
       .returns(p2)
+
     const localVue = createLocalVue()
     localVue.use(VueRouter)
     const router = mockRouter.mock()
@@ -1878,7 +1906,7 @@ describe('AnnualReport - Part 6 - Error/Warning dialogs', () => {
       },
       vuetify
     })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
   })
 
   afterEach(() => {
@@ -1912,8 +1940,9 @@ describe('AnnualReport - Part 6 - Error/Warning dialogs', () => {
     wrapper.find('#ar-file-pay-btn').trigger('click')
     // work-around because click trigger isn't working
     await vm.onClickFilePay()
-
     await flushPromises()
+
+    // verify error dialog
     expect(vm.saveErrorDialog).toBe(true)
     expect(vm.saveErrors.length).toBe(1)
     expect(vm.saveErrors[0].error).toBe('err msg post')
@@ -1952,6 +1981,7 @@ describe('AnnualReport - Part 6 - Error/Warning dialogs', () => {
     await vm.onClickFilePay()
     await flushPromises()
 
+    // verify error dialog
     expect(vm.saveErrorDialog).toBe(true)
     expect(vm.saveErrors.length).toBe(1)
     expect(vm.saveErrors[0].error).toBe('err msg put')
@@ -1960,9 +1990,9 @@ describe('AnnualReport - Part 6 - Error/Warning dialogs', () => {
   })
 })
 
-describe('AnnualReport - Part 7 - Save through multiple tabs', () => {
-  let wrapper
-  let vm
+describe('AnnualReport - Part 7 - Concurrent Saves', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
 
   store.state.entityName = 'Legal Name - CP0001191'
   store.state.entityType = EntityTypes.COOP
@@ -1970,7 +2000,7 @@ describe('AnnualReport - Part 7 - Save through multiple tabs', () => {
   store.state.currentFilingStatus = 'NEW'
   store.state.entityIncNo = 'CP0001191'
 
-  beforeEach(async () => {
+  beforeEach(() => {
     const localVue = createLocalVue()
     localVue.use(VueRouter)
     const router = mockRouter.mock()
@@ -1994,9 +2024,9 @@ describe('AnnualReport - Part 7 - Save through multiple tabs', () => {
       },
       vuetify
     })
-    vm = wrapper.vm as any
+    vm = wrapper.vm
 
-    // mock "save draft" endpoint
+    // mock "get tasks" endpoint
     sinon
       .stub(axios, 'get')
       .withArgs('CP0001191/tasks')
@@ -2004,19 +2034,19 @@ describe('AnnualReport - Part 7 - Save through multiple tabs', () => {
         new Promise(resolve =>
           resolve({
             data: {
-              'tasks': [
+              tasks: [
                 {
-                  'task': {
-                    'filing': {
-                      'header': {
-                        'name': 'annualReport',
-                        'ARFilingYear': 2017,
-                        'status': 'DRAFT'
+                  task: {
+                    filing: {
+                      header: {
+                        name: 'annualReport',
+                        ARFilingYear: 2017,
+                        status: 'DRAFT'
                       }
                     }
                   },
-                  'enabled': true,
-                  'order': 1
+                  enabled: true,
+                  order: 1
                 }
               ]
             }
@@ -2030,7 +2060,7 @@ describe('AnnualReport - Part 7 - Save through multiple tabs', () => {
     wrapper.destroy()
   })
 
-  it('shows duplicate filing popup if a todo not in NEW status exist', async () => {
+  it('prevents saving if a pending task exists', async () => {
     vm.agmDateValid = true
     vm.addressesFormValid = true
     vm.directorFormValid = true
@@ -2048,11 +2078,11 @@ describe('AnnualReport - Part 7 - Save through multiple tabs', () => {
     // click the Save button
     wrapper.find('#ar-file-pay-btn').trigger('click')
     await flushPromises()
-    setTimeout(() => {
-      expect(vm.saveErrorDialog).toBe(true)
-      expect(vm.saveErrors.length).toBe(1)
-      expect(vm.saveErrors[0].error)
-        .toBe('Another draft filing already exists. Please complete it before creating a new filing.')
-    }, 1000)
+
+    // verify error dialog
+    expect(vm.saveErrorDialog).toBe(true)
+    expect(vm.saveErrors.length).toBe(1)
+    expect(vm.saveErrors[0].error)
+      .toBe('Another draft filing already exists. Please complete it before creating a new filing.')
   })
 })

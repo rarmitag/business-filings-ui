@@ -1,9 +1,13 @@
 <template>
-  <v-card flat id="staff-payment-container">
-    <div class="routingslipnumber-container">
-      <label>Routing Slip Number</label>
-      <div class="value routingslipnumber">
-        <p>{{ value }}</p>
+  <v-card flat id="summary-payment-container">
+    <div class="payment-container">
+      <label>Payment</label>
+      <div class="value payment-received" v-if="routingSlipNumber">
+        <p class="mb-0"><strong>Routing Slip Number:</strong> {{routingSlipNumber}}</p>
+        <p class="mb-0" v-if="isPriority"><strong>Priority</strong></p>
+      </div>
+      <div class="value no-fee" v-if="isWaiveFees">
+        <p class="mb-0">No Fee</p>
       </div>
     </div>
   </v-card>
@@ -14,25 +18,33 @@ import { Component, Vue, Prop } from 'vue-property-decorator'
 
 @Component({})
 export default class SummaryStaffPayment extends Vue {
-  // Prop passed into this component.
+  /** Routing Slip Number prop. */
   @Prop({ default: '' })
-  private value: string
+  private routingSlipNumber: string
+
+  /** Is Priority prop. */
+  @Prop({ default: false })
+  private isPriority: boolean
+
+  /** Is Waive Fees prop. */
+  @Prop({ default: false })
+  private isWaiveFees: boolean
 }
 </script>
 
 <style lang="scss" scoped>
 // @import '@/assets/styles/theme.scss';
 
-#staff-payment-container {
+#summary-payment-container {
   margin-top: 1rem;
-  padding: 1.25rem 1.25rem 0.25rem 1.25rem;
-  font-size: 0.875rem;
+  padding: 1.25rem;
 }
 
-.routingslipnumber-container {
+.payment-container {
   display: flex;
   flex-flow: column nowrap;
   position: relative;
+  font-size: 1rem;
 
   > label:first-child {
     font-weight: 700;
@@ -40,7 +52,7 @@ export default class SummaryStaffPayment extends Vue {
 }
 
 @media (min-width: 768px) {
-  .routingslipnumber-container {
+  .payment-container {
     flex-flow: row nowrap;
 
     > label:first-child {
@@ -51,7 +63,9 @@ export default class SummaryStaffPayment extends Vue {
   }
 }
 
-.value.routingslipnumber {
-  min-width: 35rem;
+.value.payment-received,
+.value.no-fee {
+  min-width: 100%;
+  line-height: 1.5rem;
 }
 </style>
