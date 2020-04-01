@@ -4,12 +4,13 @@ import AnnualReport from '@/views/AnnualReport.vue'
 import StandaloneDirectorsFiling from '@/views/StandaloneDirectorsFiling.vue'
 import StandaloneOfficeAddressFiling from '@/views/StandaloneOfficeAddressFiling.vue'
 import Correction from '@/views/Correction.vue'
+import CorrectOfficeAddress from '@/views/CorrectOfficeAddress.vue'
 import Signin from '@/views/auth/Signin.vue'
 import Signout from '@/views/auth/Signout.vue'
 
 // Constants
-import { ANNUAL_REPORT, CORRECTION, DASHBOARD, STANDALONE_ADDRESSES, STANDALONE_DIRECTORS,
-  SIGNIN, SIGNOUT } from '@/constants'
+import { ANNUAL_REPORT, ADDRESS_CORRECTION, CORRECTION, DASHBOARD, STANDALONE_ADDRESSES,
+  STANDALONE_DIRECTORS, SIGNIN, SIGNOUT } from '@/constants'
 
 export default [
   {
@@ -47,6 +48,14 @@ export default [
   {
     path: '/correction',
     name: CORRECTION,
+    component: Correction,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/address-correction',
+    name: ADDRESS_CORRECTION,
     component: Correction,
     meta: {
       requiresAuth: true

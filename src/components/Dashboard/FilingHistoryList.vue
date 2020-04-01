@@ -188,7 +188,7 @@ import { AddCommentDialog, DownloadErrorDialog } from '@/components/dialogs'
 
 // Enums and Constants
 import { EntityTypes, FilingNames, FilingStatus, FilingTypes } from '@/enums'
-import { ANNUAL_REPORT, CORRECTION, STANDALONE_ADDRESSES, STANDALONE_DIRECTORS } from '@/constants'
+import { ANNUAL_REPORT, ADDRESS_CORRECTION, CORRECTION, STANDALONE_ADDRESSES, STANDALONE_DIRECTORS } from '@/constants'
 
 // Mixins
 import { CommonMixin, DateMixin, EnumMixin, FilingMixin } from '@/mixins'
@@ -456,7 +456,7 @@ export default {
         }
       }
     },
-
+    /*
     correctThisItem (item) {
       if (!item || !item.type) return // safety check
       switch (item.type) {
@@ -497,7 +497,7 @@ export default {
           break
       }
     },
-
+    */
     async downloadDocument (filingDocument) {
       this.loadingDocument = true
       await this.downloadOneDocument(filingDocument)
