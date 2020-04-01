@@ -7,7 +7,7 @@
 
     <resume-error-dialog
       :dialog="resumeErrorDialog"
-      @exit="navigateToDashboard"
+      @exit="navigateToDashboard(true)"
       attach="#annual-report"
     />
 
@@ -17,15 +17,15 @@
       :disableRetry="busySaving"
       :errors="saveErrors"
       :warnings="saveWarnings"
-      @exit="navigateToDashboard"
-      @retry="onClickFilePay"
-      @okay="resetErrors"
+      @exit="navigateToDashboard(true)"
+      @retry="onClickFilePay()"
+      @okay="resetErrors()"
       attach="#annual-report"
     />
 
     <payment-error-dialog
       :dialog="paymentErrorDialog"
-      @exit="navigateToDashboard"
+      @exit="navigateToDashboard(true)"
       attach="#annual-report"
     />
 
@@ -43,9 +43,9 @@
           <section id="annual-report-main-section">
             <!-- COOP only: -->
             <article
+              v-if="isCoop()"
               class="annual-report-article"
               :class="agmDate ? 'agm-date-selected' : 'no-agm-date-selected'"
-              v-if="entityFilter(EntityTypes.COOP)"
             >
               <!-- Page Title -->
               <header>
@@ -117,8 +117,8 @@
 
             <!-- BCOMP only: -->
             <article
+              v-if="isBComp()"
               class="annual-report-article"
-              v-if="entityFilter(EntityTypes.BCOMP)"
             >
               <!-- Page Title -->
               <header>
@@ -155,9 +155,9 @@
             <!-- Both COOP and BCOMP: -->
 
             <!-- Certify -->
-            <section v-show="entityFilter(EntityTypes.BCOMP) || agmDate || noAgm">
+            <section v-show="isBComp() || agmDate || noAgm">
               <header>
-                <h2 id="AR-step-4-header" v-if="entityFilter(EntityTypes.BCOMP)">3. Certify</h2>
+                <h2 id="AR-step-4-header" v-if="isBComp()">3. Certify</h2>
                 <h2 id="AR-step-4-header" v-else>4. Certify</h2>
                 <p>Enter the legal name of the person authorized to complete and submit this Annual Report.</p>
               </header>
@@ -171,7 +171,7 @@
             </section>
 
             <!-- Staff Payment -->
-            <section v-if="isRoleStaff" v-show="entityFilter(EntityTypes.BCOMP) || agmDate || noAgm">
+            <section v-if="isRoleStaff" v-show="isBComp() || agmDate || noAgm">
               <header>
                 <h2 id="AR-step-5-header">5. Staff Payment</h2>
               </header>
@@ -190,7 +190,7 @@
             <affix relative-element-selector="#annual-report-main-section" :offset="{ top: 120, bottom: 40 }">
               <sbc-fee-summary
                 v-bind:filingData="[...filingData]"
-                v-bind:payURL="payAPIURL"
+                v-bind:payURL="payApiUrl"
                 @total-fee="totalFee=$event"
               />
             </affix>
@@ -201,9 +201,9 @@
 
     <!-- Buttons ( COOP only ) -->
     <v-container
-      id="coop-buttons-container"
+      v-if="isCoop()"
       class="list-item"
-      v-if="entityFilter(EntityTypes.COOP)"
+      id="coop-buttons-container"
     >
       <div class="buttons-left">
         <v-btn id="ar-save-btn" large
@@ -245,19 +245,24 @@
             There is no opportunity to change information beyond this point.</span>
         </v-tooltip>
 
-        <v-btn id="ar-cancel-btn" large to="/dashboard" :disabled="busySaving || filingPaying">Cancel</v-btn>
+        <v-btn
+          id="ar-cancel-btn"
+          large
+          :disabled="busySaving"
+          @click="navigateToDashboard()"
+        >
+          <span>Cancel</span>
+        </v-btn>
       </div>
     </v-container>
 
     <!-- Buttons ( BCOMP only ) -->
     <v-container
-      id="bcorp-buttons-container"
+      v-if="isBComp()"
       class="list-item"
-      v-if="entityFilter(EntityTypes.BCOMP)"
+      id="bcorp-buttons-container"
     >
-      <div class="buttons-left">
-        <v-btn id="ar-back-btn" large to="/dashboard" :loading="filingPaying">Back</v-btn>
-      </div>
+      <div class="buttons-left"></div>
 
       <div class="buttons-right">
         <v-tooltip top color="#3b6cff">
@@ -267,7 +272,7 @@
                 id="ar-file-pay-bc-btn"
                 color="primary"
                 large
-                :disabled="!validated"
+                :disabled="!validated || busySaving"
                 :loading="filingPaying"
                 @click="onClickFilePay()"
               >
@@ -278,6 +283,15 @@
           <span>Ensure all of your information is entered correctly before you File.<br>
             There is no opportunity to change information beyond this point.</span>
         </v-tooltip>
+
+        <v-btn
+          id="ar-cancel-btn"
+          large
+          :disabled="busySaving"
+          @click="navigateToDashboard()"
+        >
+          <span>Cancel</span>
+        </v-btn>
       </div>
     </v-container>
   </div>
@@ -300,18 +314,16 @@ import { Certify, OfficeAddresses, StaffPayment, SummaryDirectors, SummaryOffice
 import { ConfirmDialog, PaymentErrorDialog, ResumeErrorDialog, SaveErrorDialog } from '@/components/dialogs'
 
 // Mixins
-import { DateMixin, EntityFilterMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
+import { DateMixin, CommonMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
 
-// Constants
-import { APPOINTED, CEASED, NAMECHANGED, ADDRESSCHANGED } from '@/constants'
-
-// Enums
+// Enums and Constants
 import { EntityTypes, FilingCodes, FilingStatus, FilingTypes } from '@/enums'
+import { APPOINTED, CEASED, NAMECHANGED, ADDRESSCHANGED, DASHBOARD } from '@/constants'
 
 export default {
   name: 'AnnualReport',
 
-  mixins: [DateMixin, EntityFilterMixin, FilingMixin, ResourceLookupMixin],
+  mixins: [DateMixin, CommonMixin, FilingMixin, ResourceLookupMixin],
 
   components: {
     ArDate,
@@ -367,9 +379,9 @@ export default {
       // other local properties
       filingId: null,
       loadingMessage: 'Loading...', // initial generic message
-      saving: false,
-      savingResuming: false,
-      filingPaying: false,
+      saving: false as boolean, // true only when saving
+      savingResuming: false as boolean, // true only when saving and resuming
+      filingPaying: false as boolean, // true only when filing and paying
       haveChanges: false,
       saveErrors: [],
       saveWarnings: [],
@@ -392,7 +404,7 @@ export default {
     /**
      * The As Of date, used to query data, as Effective Date, and as Annual Report Date.
      */
-    asOfDate () {
+    asOfDate (): string {
       // if AGM Date is not empty then use it
       if (this.agmDate) return this.agmDate
       // if filing is in past year then use last day in that year
@@ -408,32 +420,33 @@ export default {
       return this.currentDate ? +this.currentDate.substring(0, 4) : 0
     },
 
-    certifyMessage () {
-      if (this.entityFilter(EntityTypes.BCOMP)) {
+    certifyMessage (): string {
+      if (this.isBComp()) {
         return this.certifyText(FilingCodes.ANNUAL_REPORT_BC)
       }
       return this.certifyText(FilingCodes.ANNUAL_REPORT_OT)
     },
 
-    payAPIURL () {
+    payApiUrl (): string {
       return sessionStorage.getItem('PAY_API_URL')
     },
 
-    validated () {
+    validated (): boolean {
       const staffPaymentValid = (!this.isRoleStaff || !this.isPayRequired || this.staffPaymentFormValid)
 
-      if (this.entityFilter(EntityTypes.COOP)) {
+      if (this.isCoop()) {
         return (staffPaymentValid && this.agmDateValid && this.addressesFormValid && this.directorFormValid &&
           this.certifyFormValid && !this.directorEditInProgress)
       }
       return (staffPaymentValid && this.certifyFormValid)
     },
 
-    busySaving () {
+    /** True when saving, saving and resuming, or filing and paying. */
+    busySaving (): boolean {
       return (this.saving || this.savingResuming || this.filingPaying)
     },
 
-    isPayRequired () {
+    isPayRequired (): boolean {
       // FUTURE: modify rule here as needed
       return (this.totalFee > 0)
     }
@@ -454,11 +467,11 @@ export default {
 
     // NB: filing id of 0 means "new AR"
     // otherwise it's a draft AR filing id
-    this.filingId = +this.$route.params.id // number (may be NaN)
+    this.filingId = +this.$route.params.filingId // number (may be NaN)
 
-    // if tombstone data isn't set, route to home
+    // if tombstone data isn't set, go back to dashboard
     if (!this.entityIncNo || !this.ARFilingYear || isNaN(this.filingId)) {
-      this.$router.push('/')
+      this.$router.push({ name: DASHBOARD })
     } else if (this.filingId > 0) {
       // resume draft filing
       this.loadingMessage = `Resuming Your ${this.ARFilingYear} Annual Report`
@@ -503,19 +516,19 @@ export default {
     ...mapActions(['setFilingData']),
 
     fetchData () {
-      const url = this.entityIncNo + '/filings/' + this.filingId
+      const url = `businesses/${this.entityIncNo}/filings/${this.filingId}`
       axios.get(url).then(response => {
         if (response && response.data) {
           const filing = response.data.filing
           try {
             // verify data
-            if (!filing) throw new Error('missing filing')
-            if (!filing.header) throw new Error('missing header')
-            if (!filing.business) throw new Error('missing business')
-            if (filing.header.name !== FilingTypes.ANNUAL_REPORT) throw new Error('invalid filing type')
-            if (filing.header.status !== FilingStatus.DRAFT) throw new Error('invalid filing status')
-            if (filing.business.identifier !== this.entityIncNo) throw new Error('invalid business identifier')
-            if (filing.business.legalName !== this.entityName) throw new Error('invalid business legal name')
+            if (!filing) throw new Error('Missing filing')
+            if (!filing.header) throw new Error('Missing header')
+            if (!filing.business) throw new Error('Missing business')
+            if (filing.header.name !== FilingTypes.ANNUAL_REPORT) throw new Error('Invalid filing type')
+            if (filing.header.status !== FilingStatus.DRAFT) throw new Error('Invalid filing status')
+            if (filing.business.identifier !== this.entityIncNo) throw new Error('Invalid business identifier')
+            if (filing.business.legalName !== this.entityName) throw new Error('Invalid business legal name')
 
             // load Certified By but not Date
             this.certifiedBy = filing.header.certifiedBy
@@ -533,14 +546,14 @@ export default {
               if (this.$refs.directorsList && this.$refs.directorsList.setDraftDate) {
                 this.$refs.directorsList.setDraftDate(annualReport.annualGeneralMeetingDate)
               }
-              if (this.entityFilter(EntityTypes.COOP)) {
+              if (this.isCoop()) {
                 // set the new AGM date in the AGM Date component (may be null or empty)
                 this.newAgmDate = annualReport.annualGeneralMeetingDate || ''
                 // set the new No AGM flag in the AGM Date component (may be undefined)
                 this.newNoAgm = annualReport.didNotHoldAgm || false
               }
             } else {
-              throw new Error('missing annual report')
+              throw new Error('Missing annual report')
             }
 
             // load Change of Directors fields
@@ -569,7 +582,7 @@ export default {
                   this.updateFilingData('add', FilingCodes.FREE_DIRECTOR_CHANGE_OT, false, this.isWaiveFees)
                 }
               } else {
-                throw new Error('invalid change of directors')
+                throw new Error('Invalid change of directors')
               }
             } else {
               // To handle the condition of save as draft without change of director
@@ -592,7 +605,7 @@ export default {
                 // use default Waive Fees flag
                 this.updateFilingData('add', FilingCodes.ADDRESS_CHANGE_OT, false, this.isWaiveFees)
               } else {
-                throw new Error('invalid change of address')
+                throw new Error('Invalid change of address')
               }
             }
           } catch (err) {
@@ -678,9 +691,9 @@ export default {
 
       this.savingResuming = true
       const filing = await this.saveFiling(true)
-      // on success, route to Home URL
+      // on success, go to dashboard
       if (filing) {
-        this.$router.push('/')
+        this.$router.push({ name: DASHBOARD })
       }
       this.savingResuming = false
     },
@@ -703,16 +716,16 @@ export default {
         if (!prePaidFiling) {
           const paymentToken = filing.header.paymentToken
           const baseUrl = sessionStorage.getItem('BASE_URL')
-          const returnURL = encodeURIComponent(baseUrl + 'dashboard?filing_id=' + filingId)
+          const returnUrl = encodeURIComponent(baseUrl + '?filing_id=' + filingId)
           const authUrl = sessionStorage.getItem('AUTH_URL')
-          const payURL = authUrl + 'makepayment/' + paymentToken + '/' + returnURL
+          const payUrl = authUrl + 'makepayment/' + paymentToken + '/' + returnUrl
 
           // assume Pay URL is always reachable
           // otherwise, user will have to retry payment later
-          window.location.assign(payURL)
+          window.location.assign(payUrl)
         } else {
           // route directly to dashboard
-          this.$router.push('/dashboard?filing_id=' + filingId)
+          this.$router.push({ name: DASHBOARD, query: { filing_id: filingId } })
         }
       }
       this.filingPaying = false
@@ -764,7 +777,7 @@ export default {
         }
       }
 
-      if (this.entityFilter(EntityTypes.COOP)) {
+      if (this.isCoop()) {
         annualReport = {
           annualReport: {
             annualGeneralMeetingDate: this.agmDate || null, // API doesn't validate empty string
@@ -779,7 +792,7 @@ export default {
             directors: this.allDirectors.filter(el => el.cessationDate === null)
           }
         }
-      } else {
+      } else if (this.isBComp()) {
         annualReport = {
           annualReport: {
             annualReportDate: this.asOfDate,
@@ -835,14 +848,14 @@ export default {
 
       if (this.filingId > 0) {
         // we have a filing id, so we are updating an existing filing
-        let url = this.entityIncNo + '/filings/' + this.filingId
+        let url = `businesses/${this.entityIncNo}/filings/${this.filingId}`
         if (isDraft) {
           url += '?draft=true'
         }
         let filing = null
         await axios.put(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
-            throw new Error('invalid API response')
+            throw new Error('Invalid API response')
           }
           filing = res.data.filing
           this.haveChanges = false
@@ -864,14 +877,14 @@ export default {
         return filing
       } else {
         // filing id is 0, so we are saving a new filing
-        let url = this.entityIncNo + '/filings'
+        let url = `businesses/${this.entityIncNo}/filings`
         if (isDraft) {
           url += '?draft=true'
         }
         let filing = null
         await axios.post(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
-            throw new Error('invalid API response')
+            throw new Error('Invalid API response')
           }
           filing = res.data.filing
           this.haveChanges = false
@@ -894,10 +907,9 @@ export default {
       }
     },
 
-    navigateToDashboard () {
-      this.haveChanges = false
-      this.dialog = false
-      this.$router.push('/dashboard')
+    navigateToDashboard (ignoreChanges: boolean = false) {
+      if (ignoreChanges) this.haveChanges = false
+      this.$router.push({ name: DASHBOARD })
     },
 
     resetErrors () {
@@ -927,7 +939,8 @@ export default {
     async hasTasks (businessId) {
       let hasPendingItems = false
       if (this.filingId === 0) {
-        await axios.get(businessId + '/tasks')
+        const url = `businesses/${businessId}/tasks`
+        await axios.get(url)
           .then(response => {
             if (response && response.data && response.data.tasks) {
               response.data.tasks.forEach((task) => {
@@ -952,7 +965,7 @@ export default {
     // for BComp, add AR filing code now
     // for Coop, code is added when AGM Date becomes valid
     // use default Priority and Waive Fees flags
-    if (this.entityFilter(EntityTypes.BCOMP)) {
+    if (this.isBComp()) {
       this.updateFilingData('add', FilingCodes.ANNUAL_REPORT_BC, this.isPriority, this.isWaiveFees)
     }
   },
@@ -977,9 +990,9 @@ export default {
     isPriority (val: boolean): void {
       // apply this flag to AR filing code only
       // simply re-add the AR code with the updated Priority flag and default Waive Fees flag
-      if (this.entityFilter(EntityTypes.BCOMP)) {
+      if (this.isBComp()) {
         this.updateFilingData('add', FilingCodes.ANNUAL_REPORT_BC, val, this.isWaiveFees)
-      } else {
+      } else if (this.isCoop()) {
         this.updateFilingData('add', FilingCodes.ANNUAL_REPORT_OT, val, this.isWaiveFees)
       }
     },

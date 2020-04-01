@@ -31,7 +31,7 @@
               />
             </section>
 
-            <section>
+            <section v-show="!nrNumber">
               <header>
                 <h2 class="mb-3" data-test-id="dashboard-filing-history-subtitle">
                   <span>Recent Filing History</span>&nbsp;<span class="gray6">({{filedCount}})</span>
@@ -46,7 +46,7 @@
           </v-col>
 
           <v-col cols="12" md="3" style="position: relative">
-            <section>
+            <section v-show="!nrNumber">
               <header class="aside-header mb-3">
                 <h2 data-test-id="dashboard-addresses-subtitle">Office Addresses</h2>
                 <v-scale-transition>
@@ -81,7 +81,7 @@
               </v-card>
             </section>
 
-            <section>
+            <section v-show="!nrNumber">
               <header class="aside-header mb-3">
                 <h2 data-test-id="dashboard-directors-subtitle">Current Directors</h2>
                 <v-btn text small color="primary"
@@ -120,18 +120,19 @@ import AddressListSm from '@/components/Dashboard/AddressListSm.vue'
 import DirectorListSm from '@/components/Dashboard/DirectorListSm.vue'
 
 // Mixins
-import { EntityFilterMixin } from '@/mixins'
+import { CommonMixin } from '@/mixins'
 
 // Dialogs
 import { CoaWarningDialog } from '@/components/dialogs'
 
-// Enums
+// Enums and Constants
 import { EntityTypes, FilingNames, FilingStatus } from '@/enums'
+import { STANDALONE_ADDRESSES, STANDALONE_DIRECTORS } from '@/constants'
 
 export default {
   name: 'Dashboard',
 
-  mixins: [withFlags, EntityFilterMixin],
+  mixins: [withFlags, CommonMixin],
 
   components: {
     TodoList,
@@ -161,20 +162,25 @@ export default {
   },
 
   computed: {
-    ...mapState(['entityIncNo'])
+    ...mapState(['entityIncNo']),
+
+    /** The NR Number string. */
+    nrNumber (): string {
+      return sessionStorage.getItem('NR_NUMBER')
+    }
   },
 
   methods: {
-    ...mapActions(['setCurrentFilingStatus', 'setTriggerDashboardReload']),
+    ...mapActions(['setCurrentFilingStatus']),
 
     goToStandaloneDirectors () {
       this.setCurrentFilingStatus(FilingStatus.NEW)
-      this.$router.push({ name: 'standalone-directors', params: { id: 0 } }) // 0 means "new COD filing"
+      this.$router.push({ name: STANDALONE_DIRECTORS, params: { filingId: 0 } }) // 0 means "new COD filing"
     },
 
     goToStandaloneAddresses () {
       this.setCurrentFilingStatus(FilingStatus.NEW)
-      this.$router.push({ name: 'standalone-addresses', params: { id: 0 } }) // 0 means "new COA filing"
+      this.$router.push({ name: STANDALONE_ADDRESSES, params: { filingId: 0 } }) // 0 means "new COA filing"
     },
 
     checkToReloadDashboard () {
@@ -216,12 +222,13 @@ export default {
       }
 
       // get current filing status
-      let url = this.entityIncNo + '/filings/' + filingId
+      let url = `businesses/${this.entityIncNo}/filings/${filingId}`
       axios.get(url).then(res => {
         // if the filing status is now COMPLETE, reload the dashboard
         if (res && res.data && res.data.filing && res.data.filing.header &&
         res.data.filing.header.status === FilingStatus.COMPLETED) {
-          this.setTriggerDashboardReload(true)
+          // emit dashboard reload trigger event
+          this.$root.$emit('triggerDashboardReload')
         } else {
           // call this function again in 1 second
           let vue = this
@@ -247,6 +254,8 @@ export default {
      * @param filings The array of filings in history
      */
     checkPendingFilings (filings: Array<any>) {
+      if (!filings || !filings.length) return // safety check
+
       filings.some(filing => {
         if (filing.name === FilingNames.ADDRESS_CHANGE && filing.status === FilingStatus.PAID) {
           this.effectiveDate = filing.filingEffectiveDate
@@ -269,9 +278,7 @@ export default {
      * Display COA warning if BCOMP else proceed to COA.
      */
     proceedCoa () {
-      this.entityFilter(EntityTypes.BCOMP)
-        ? this.toggleCoaWarning()
-        : this.goToStandaloneAddresses()
+      this.isBComp() ? this.toggleCoaWarning() : this.goToStandaloneAddresses()
     }
   },
 
@@ -283,7 +290,7 @@ export default {
   watch: {
     historyFilings () {
       // check if a filing has a paid but pending state ( Currently BCOMPS )
-      if (this.entityFilter(EntityTypes.BCOMP)) {
+      if (this.isBComp()) {
         this.checkPendingFilings(this.historyFilings)
       }
       // check whether to reload the dashboard with updated data

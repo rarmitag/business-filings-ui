@@ -8,15 +8,13 @@ import sinon from 'sinon'
 import { SummaryDirectors } from '@/components/common'
 
 // Store
-import store from '@/store/store'
-
-// Enums
-import { EntityTypes } from '@/enums'
+import { getVuexStore } from '@/store'
 
 Vue.use(Vuetify)
 Vue.use(Vuelidate)
 
 const vuetify = new Vuetify({})
+const store = getVuexStore()
 
 // Boilerplate to prevent the complaint "[Vuetify] Unable to locate target [data-app]"
 const app: HTMLDivElement = document.createElement('div')
@@ -29,7 +27,7 @@ describe('Directors as a COOP', () => {
   beforeEach(done => {
     // init store
     store.state.entityIncNo = 'CP0001191'
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
     const directors = [
       {
         'id': 1,
@@ -165,8 +163,8 @@ describe('Directors as a BCOMP', () => {
 
   beforeEach(done => {
     // init store
-    store.state.entityIncNo = 'BC0001191'
-    store.state.entityType = EntityTypes.BCOMP
+    store.state.entityIncNo = 'BC0007291'
+    store.state.entityType = 'BC'
     const directors = [
       {
         'id': 1,

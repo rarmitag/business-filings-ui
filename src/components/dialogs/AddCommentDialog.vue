@@ -110,14 +110,14 @@ export default class AddCommentDialog extends Vue {
       }
     }
 
-    const url = `${this.entityIncNo}/filings/${this.filingId}/comments`
+    const url = `businesses/${this.entityIncNo}/filings/${this.filingId}/comments`
     let success = false
     await axios.post(url, data).then(res => {
       success = true
-    }).catch(err => {
-      alert('Could not save your comment. Please try again or cancel.')
+    }).catch(error => {
       // eslint-disable-next-line no-console
-      console.error('save() error =', err)
+      console.error('save() error =', error)
+      alert('Could not save your comment. Please try again or cancel.')
     })
 
     this.saving = false

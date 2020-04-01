@@ -30,10 +30,7 @@ export default {
   recordsAddress: null as object,
   directors: [] as Array<object>,
 
-  triggerDashboardReload: false as boolean,
-
   currentFilingStatus: null as FilingStatus,
   configObject: null as object,
-
   filingData: [] as Array<FilingData>
 }

@@ -1,14 +1,14 @@
 import Vue from 'vue'
 import Vuetify from 'vuetify'
 import Vuelidate from 'vuelidate'
-
-import store from '@/store/store'
+import { getVuexStore } from '@/store'
 import EntityInfo from '@/components/EntityInfo.vue'
 
 Vue.use(Vuetify)
 Vue.use(Vuelidate)
 
 const vuetify = new Vuetify({})
+const store = getVuexStore()
 
 // Boilerplate to prevent the complaint "[Vuetify] Unable to locate target [data-app]"
 const app: HTMLDivElement = document.createElement('div')
@@ -17,6 +17,10 @@ document.body.append(app)
 
 describe('EntityInfo', () => {
   let vm: any
+
+  beforeAll(() => {
+    sessionStorage.setItem('BUSINESS_ID', 'CP0001191')
+  })
 
   beforeEach(done => {
     const Constructor = Vue.extend(EntityInfo)

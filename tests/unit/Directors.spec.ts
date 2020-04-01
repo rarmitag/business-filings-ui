@@ -5,10 +5,8 @@ import { mount, Wrapper } from '@vue/test-utils'
 import flushPromises from 'flush-promises'
 import sinon from 'sinon'
 import axios from '@/axios-auth'
-import store from '@/store/store'
-
+import { getVuexStore } from '@/store'
 import Directors from '@/components/common/Directors.vue'
-import { EntityTypes } from '@/enums'
 import { configJson } from '@/resources/business-config'
 
 Vue.use(Vuetify)
@@ -21,6 +19,7 @@ Vue.config.devtools = false
 Vue.config.productionTip = false
 
 const vuetify = new Vuetify({})
+const store = getVuexStore()
 
 // Boilerplate to prevent the complaint "[Vuetify] Unable to locate target [data-app]"
 const app: HTMLDivElement = document.createElement('div')
@@ -49,11 +48,13 @@ describe('Directors as a COOP', () => {
   beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
     store.state.entityFoundingDate = '2018-03-01T00:00:00'
     store.state.configObject = configJson.find(x => x.typeEnum === store.state.entityType)
+
     // GET directors
-    sinon.stub(axios, 'get').withArgs('CP0001191/directors?date=2019-04-01')
+    sinon.stub(axios, 'get')
+      .withArgs('businesses/CP0001191/directors?date=2019-04-01')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -445,11 +446,13 @@ describe('Directors as a BCOMP', () => {
 
   beforeEach(() => {
     // init store
-    store.state.entityIncNo = 'CP0002291'
-    store.state.entityType = EntityTypes.BCOMP
+    store.state.entityIncNo = 'BC0007291'
+    store.state.entityType = 'BC'
     store.state.configObject = configJson.find(x => x.typeEnum === store.state.entityType)
+
     // GET directors
-    sinon.stub(axios, 'get').withArgs('CP0002291/directors?date=2019-04-01')
+    sinon.stub(axios, 'get')
+      .withArgs('businesses/BC0007291/directors?date=2019-04-01')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -728,10 +731,11 @@ describe('Appoint New Director tests', () => {
   beforeEach(() => {
     // init store
     store.state.entityIncNo = 'CP0001191'
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
 
     // GET directors
-    sinon.stub(axios, 'get').withArgs('CP0001191/directors?date=2019-04-01')
+    sinon.stub(axios, 'get')
+      .withArgs('businesses/CP0001191/directors?date=2019-04-01')
       .returns(new Promise((resolve) => resolve({
         data:
           {

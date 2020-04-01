@@ -4,23 +4,26 @@ import Vuelidate from 'vuelidate'
 import VueRouter from 'vue-router'
 import sinon from 'sinon'
 import { createLocalVue, shallowMount, Wrapper } from '@vue/test-utils'
-
+import flushPromises from 'flush-promises'
+import mockRouter from './mockRouter'
 import axios from '@/axios-auth'
-import store from '@/store/store'
+import { getVuexStore } from '@/store'
 import App from '@/App.vue'
 
 Vue.use(Vuetify)
 Vue.use(Vuelidate)
 
 const vuetify = new Vuetify({})
+const store = getVuexStore()
 
 describe('App as a COOP', () => {
   let wrapper: Wrapper<Vue>
   let vm: any
 
-  beforeEach(done => {
+  beforeAll(() => {
+    sessionStorage.clear()
     // we need a token that can get parsed properly (will be expired but doesn't matter for tests)
-    // must not include keycloakRoles=["staff"]
+    // must include keycloakRoles=["view", "edit", "staff"]
     sessionStorage.setItem('KEYCLOAK_TOKEN', 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUbWdtZUk0MnVsdUZ0N3' +
         'FQbmUtcTEzdDUwa0JDbjF3bHF6dHN0UGdUM1dFIn0.eyJqdGkiOiIzZDQ3YjgwYy01MTAzLTRjMTYtOGNhZC0yMjU4NDMwZGYwZTciLCJle' +
       'HAiOjE1Njg0ODk1NTksIm5iZiI6MCwiaWF0IjoxNTY4NDAzMTYwLCJpc3MiOiJodHRwczovL3Nzby1kZXYucGF0aGZpbmRlci5nb3YuYmMuY2' +
@@ -43,318 +46,14 @@ describe('App as a COOP', () => {
       'JiIUlDmKZ2ow7GmmDabic8igHnEDYD6sI7OFYnCJhRdgVEHN-_4KUk2YsAVl5XUr6blJKMuYDPeMyNreGTXU7foE4AT-93FwlyTyFzQGddrDv' +
       'c6kkQr7mgJNTtgg87DdYbVGbEtIetyVfvwEF0rU8JH2N-j36XIebo33FU3-gJ5Y5S69EHPqQ37R9H4d8WUrHO-4QzJQih3Yaea820XBplJeo0' +
       'DO3hQoVtPD42j0p3aIy10cnW2g')
-    // set business identified and user full name
-    sessionStorage.setItem('BUSINESS_IDENTIFIER', 'CP0001867')
-    sessionStorage.setItem('USER_FULL_NAME', 'First Last')
-
-    const get = sinon.stub(axios, 'get')
-    // GET authorizations (role)
-    get.withArgs('CP0001867/authorizations')
-      .returns(new Promise((resolve) => resolve({
-        data:
-            {
-              roles: ['edit', 'view']
-            }
-      })))
-
-    // GET entity info
-    // NB: contains responses for 2 axios calls with the same signature
-    get.withArgs('CP0001867')
-      .returns(new Promise((resolve) => resolve({
-        data:
-            {
-              // Auth API Entity data
-              contacts: [
-                {
-                  email: 'name@mail.com',
-                  phone: '(111)-222-3333',
-                  phoneExtension: '999'
-                }
-              ],
-              // Legal API Business data
-              business: {
-                legalName: 'TEST NAME',
-                status: 'GOODSTANDING',
-                taxId: '123456789',
-                identifier: 'CP0001867',
-                lastLedgerTimestamp: '2019-08-14T22:27:12+00:00',
-                foundingDate: '2000-07-13T00:00:00+00:00',
-                lastAnnualGeneralMeetingDate: '2019-08-16',
-                legalType: null
-              }
-            }
-      })))
-
-    // GET tasks
-    get.withArgs('CP0001867/tasks')
-      .returns(new Promise((resolve) => resolve({
-        data:
-            {
-              'tasks': [
-                {
-                  'task': {
-                    'todo': {
-                      'header': {
-                        'name': 'annualReport',
-                        'ARFilingYear': 2017,
-                        'status': 'NEW'
-                      }
-                    }
-                  },
-                  'enabled': true,
-                  'order': 1
-                },
-                {
-                  'task': {
-                    'todo': {
-                      'header': {
-                        'name': 'annualReport',
-                        'ARFilingYear': 2018,
-                        'status': 'NEW'
-                      }
-                    }
-                  },
-                  'enabled': false,
-                  'order': 2
-                },
-                {
-                  'task': {
-                    'todo': {
-                      'header': {
-                        'name': 'annualReport',
-                        'ARFilingYear': 2019,
-                        'status': 'NEW'
-                      }
-                    }
-                  },
-                  'enabled': false,
-                  'order': 3
-                }
-              ]
-            }
-      })))
-
-    // GET filings
-    get.withArgs('CP0001867/filings')
-      .returns(new Promise((resolve) => resolve({
-        data:
-            {
-              'filings': [
-                {
-                  'filing': {
-                    'header': {
-                      'name': 'annualReport',
-                      'date': '2019-01-02',
-                      'paymentToken': 123,
-                      'certifiedBy': 'Full Name 1',
-                      'filingId': 321
-                    },
-                    'annualReport': {
-                      'annualGeneralMeetingDate': '2019-12-31'
-                    }
-                  }
-                },
-                {
-                  'filing': {
-                    'header': {
-                      'name': 'changeOfDirectors',
-                      'date': '2019-03-04',
-                      'paymentToken': 456,
-                      'certifiedBy': 'Full Name 2',
-                      'filingId': 654
-                    },
-                    'changeOfDirectors': {
-                    }
-                  }
-                },
-                {
-                  'filing': {
-                    'header': {
-                      'name': 'changeOfAddress',
-                      'date': '2019-05-06',
-                      'paymentToken': 789,
-                      'certifiedBy': 'Full Name 3',
-                      'filingId': 987
-                    },
-                    'changeOfAddress': {
-                    }
-                  }
-                }
-              ]
-            }
-      })))
-
-    // GET addresses
-    get.withArgs('CP0001867/addresses')
-      .returns(new Promise((resolve) => resolve({
-        data:
-            {
-              'registeredOffice':
-                {
-                  'mailingAddress': {
-                    'streetAddress': '1012 Douglas St',
-                    'addressCity': 'Victoria',
-                    'addressRegion': 'BC',
-                    'addressType': 'mailing',
-                    'postalCode': 'V8W 2C3',
-                    'addressCountry': 'CA'
-                  },
-                  'deliveryAddress': {
-                    'streetAddress': '220 Buchanan St',
-                    'addressCity': 'Glasgow',
-                    'addressRegion': 'Scotland',
-                    'addressType': 'delivery',
-                    'postalCode': 'G1 2FFF',
-                    'addressCountry': 'UK'
-                  }
-                }
-            }
-      })))
-
-    // GET directors
-    get.withArgs('CP0001867/directors')
-      .returns(new Promise((resolve) => resolve({
-        data:
-            {
-              directors: [
-                {
-                  'officer': {
-                    'firstName': 'Peter',
-                    'lastName': 'Griffin'
-                  },
-                  'deliveryAddress': {
-                    'streetAddress': '1012 Douglas St',
-                    'addressCity': 'Victoria',
-                    'addressRegion': 'BC',
-                    'postalCode': 'V8W 2C3',
-                    'addressCountry': 'CA'
-                  }
-                },
-                {
-                  'officer': {
-                    'firstName': 'Joe',
-                    'lastName': 'Swanson'
-                  },
-                  'deliveryAddress': {
-                    'streetAddress': '220 Buchanan St',
-                    'addressCity': 'Glasgow',
-                    'addressRegion': 'Scotland',
-                    'postalCode': 'G1 2FFF',
-                    'addressCountry': 'UK'
-                  }
-                }
-              ]
-            }
-      })))
-
-    // create a Local Vue and install router (and store) on it
-    const localVue = createLocalVue()
-    localVue.use(VueRouter)
-    const router = new VueRouter()
-    wrapper = shallowMount(App, {
-      localVue,
-      router,
-      store,
-      vuetify })
-    vm = wrapper.vm
-
-    vm.$nextTick(() => {
-      done()
-    })
+    sessionStorage.setItem('BUSINESS_ID', 'CP0001191')
   })
 
-  afterEach(() => {
-    sinon.restore()
-    wrapper.destroy()
-    sessionStorage.clear()
-  })
-
-  it('gets Keycloak Roles and Auth Roles properly', () => {
-    expect(vm.$store.getters.isRoleStaff).toBe(true)
-    expect(vm.$store.getters.isRoleEdit).toBe(true)
-    expect(vm.$store.getters.isRoleView).toBe(true)
-  })
-
-  it('fetches Business Info properly', () => {
-    expect(vm.$store.state.businessEmail).toEqual('name@mail.com')
-    expect(vm.$store.state.businessPhone).toEqual('(111)-222-3333')
-    expect(vm.$store.state.businessPhoneExtension).toEqual('999')
-  })
-
-  it('initializes Current Date properly', () => {
-    const today = new Date()
-    const year = today.getFullYear().toString()
-    const month = (today.getMonth() + 1).toString().padStart(2, '0')
-    const date = today.getDate().toString().padStart(2, '0')
-    const currentDate = `${year}-${month}-${date}`
-    expect(vm.$store.state.currentDate).toEqual(currentDate)
-  })
-
-  it('fetches Entity Info properly', () => {
-    expect(vm.$store.state.entityName).toBe('TEST NAME')
-    expect(vm.$store.state.entityStatus).toBe('GOODSTANDING')
-    expect(vm.$store.state.entityBusinessNo).toBe('123456789')
-    expect(vm.$store.state.entityIncNo).toBe('CP0001867')
-    expect(vm.$store.state.lastPreLoadFilingDate).toBe('2019-08-14')
-    expect(vm.$store.state.entityFoundingDate).toBe('2000-07-13T00:00:00+00:00')
-    expect(vm.$store.state.lastAgmDate).toBe('2019-08-16')
-  })
-
-  it('fetches Tasks properly', () => {
-    expect(vm.$store.state.tasks.length).toBe(3)
-    expect(vm.$store.state.tasks[0].task.todo.header.ARFilingYear).toBe(2017)
-    expect(vm.$store.state.tasks[1].task.todo.header.ARFilingYear).toBe(2018)
-    expect(vm.$store.state.tasks[2].task.todo.header.ARFilingYear).toBe(2019)
-  })
-
-  it('fetches Filings properly', () => {
-    expect(vm.$store.state.filings.length).toBe(3)
-    expect(vm.$store.state.filings[0].filing.header.name).toBe('annualReport')
-    expect(vm.$store.state.filings[1].filing.header.name).toBe('changeOfDirectors')
-    expect(vm.$store.state.filings[2].filing.header.name).toBe('changeOfAddress')
-  })
-
-  it('fetches Addresses properly', () => {
-    expect(vm.$store.state.registeredAddress.mailingAddress.addressCity).toBe('Victoria')
-    expect(vm.$store.state.registeredAddress.deliveryAddress.addressCity).toBe('Glasgow')
-
-    // These values have been assigned in the mockResponse but are expected to be filtered out by front-end logic.
-    expect(vm.$store.state.registeredAddress.addressType).toBeUndefined()
-  })
-
-  it('fetches Directors properly', () => {
-    expect(vm.$store.state.directors.length).toBe(2)
-    expect(vm.$store.state.directors[0].officer.lastName).toBe('Griffin')
-    expect(vm.$store.state.directors[1].officer.lastName).toBe('Swanson')
-  })
-})
-
-describe('BCOMP APP', () => {
-  // just need a token that can get parsed properly (will be expired but doesn't matter for tests)
-  // must not include keycloakRoles=["staff"]
-  let wrapper: Wrapper<Vue>
-  let vm: any
-
-  beforeEach(done => {
-    sessionStorage.setItem('KEYCLOAK_TOKEN', 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUbWdtZUk0MnVsdUZ0N3F' +
-      'QbmUtcTEzdDUwa0JDbjF3bHF6dHN0UGdUM1dFIn0.eyJqdGkiOiI0MmMzOWQzYi1iMTZkLTRiYWMtOWU1Ny1hNDYyZjQ3NWY0M2UiLCJleHAiO' +
-      'jE1NzUwNzI4MTEsIm5iZiI6MCwiaWF0IjoxNTc1MDQ0MDExLCJpc3MiOiJodHRwczovL3Nzby1kZXYucGF0aGZpbmRlci5nb3YuYmMuY2EvYXV' +
-      '0aC9yZWFsbXMvZmNmMGtwcXIiLCJhdWQiOlsic2JjLWF1dGgtd2ViIiwiYWNjb3VudCJdLCJzdWIiOiI4ZTVkZDYzNS01OGRkLTQ5YzUtYmViM' +
-      'S00NmE1ZDVhMTYzNWMiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJzYmMtYXV0aC13ZWIiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiI' +
-      '5OGQ3Y2Y2Zi0xYTQ1LTQzMzUtYWU0OC02YzBiNTdlMGYwNTAiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHA6Ly8xOTIuMTY4L' +
-      'jAuMTM6ODA4MC8iLCIxOTIuMTY4LjAuMTMiLCIqIiwiaHR0cDovLzE5Mi4xNjguMC4xMzo4MDgwIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI' +
-      '6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3Vud' +
-      'CI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiIiLCJ' +
-      'yb2xlcyI6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl0sInByZWZlcnJlZF91c2VybmFtZSI6I' +
-      'mJjMDAwNzI5MSIsImxvZ2luU291cmNlIjoiUEFTU0NPREUiLCJ1c2VybmFtZSI6ImJjMDAwNzI5MSJ9.GYKmp5SQxZYTEkltSgaM3LMNcmuo_n' +
-      'b88wrYb6LbRk1BtCC0wU6Uu5zij_6mwXKyJ3dQ0L2EWR0eEqDuKzjWKVkIvQujXKzc8H9PPYPhgRqwdDr2qOglJrT2lJTkGZvPPqI217J2iiVW' +
-      'OutPePeAmozIQhmf5jlZBW_J8qSzx9GmkQvT41hxpNLkaMPjPYVM2Iy6vL4Pnu0Xma-wCN1GCPwvJGQXCuh3IsR_iTMoig8qcFS0a0lUTx_cCj' +
-      'G-zf_goG4vDTeKn6Mk50FToRtYGXkzWdfQn1T_yeS_2zrL8Ifg1QhJe74U_w40v4ikAFl-BofYnIRjopP57H-5g9_SGg')
-    sessionStorage.setItem('BUSINESS_IDENTIFIER', 'BC0007291')
+  beforeEach(async () => {
     const get = sinon.stub(axios, 'get')
 
     // GET authorizations (role)
-    get.withArgs('BC0007291/authorizations')
+    get.withArgs('CP0001191/authorizations')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -362,9 +61,8 @@ describe('BCOMP APP', () => {
           }
       })))
 
-    // GET entity info
-    // NB: contains responses for 2 axios calls with the same signature
-    get.withArgs('BC0007291')
+    // GET business info from Auth API
+    get.withArgs('CP0001191')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -375,13 +73,21 @@ describe('BCOMP APP', () => {
                 phone: '(111)-222-3333',
                 phoneExtension: '999'
               }
-            ],
+            ]
+          }
+      })))
+
+    // GET entity info from Legal API
+    get.withArgs('businesses/CP0001191')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
             // Legal API Business data
             business: {
               legalName: 'TEST NAME',
               status: 'GOODSTANDING',
               taxId: '123456789',
-              identifier: 'BC0007291',
+              identifier: 'CP0001191',
               lastLedgerTimestamp: '2019-08-14T22:27:12+00:00',
               foundingDate: '2000-07-13T00:00:00+00:00',
               lastAnnualGeneralMeetingDate: '2019-08-16',
@@ -391,7 +97,7 @@ describe('BCOMP APP', () => {
       })))
 
     // GET tasks
-    get.withArgs('BC0007291/tasks')
+    get.withArgs('businesses/CP0001191/tasks')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -440,7 +146,321 @@ describe('BCOMP APP', () => {
       })))
 
     // GET filings
-    get.withArgs('BC0007291/filings')
+    get.withArgs('businesses/CP0001191/filings')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            'filings': [
+              {
+                'filing': {
+                  'header': {
+                    'name': 'annualReport',
+                    'date': '2019-01-02',
+                    'paymentToken': 123,
+                    'certifiedBy': 'Full Name 1',
+                    'filingId': 321
+                  },
+                  'annualReport': {
+                    'annualGeneralMeetingDate': '2019-12-31'
+                  }
+                }
+              },
+              {
+                'filing': {
+                  'header': {
+                    'name': 'changeOfDirectors',
+                    'date': '2019-03-04',
+                    'paymentToken': 456,
+                    'certifiedBy': 'Full Name 2',
+                    'filingId': 654
+                  },
+                  'changeOfDirectors': {
+                  }
+                }
+              },
+              {
+                'filing': {
+                  'header': {
+                    'name': 'changeOfAddress',
+                    'date': '2019-05-06',
+                    'paymentToken': 789,
+                    'certifiedBy': 'Full Name 3',
+                    'filingId': 987
+                  },
+                  'changeOfAddress': {
+                  }
+                }
+              }
+            ]
+          }
+      })))
+
+    // GET addresses
+    get.withArgs('businesses/CP0001191/addresses')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            'registeredOffice':
+              {
+                'mailingAddress': {
+                  'streetAddress': '1012 Douglas St',
+                  'addressCity': 'Victoria',
+                  'addressRegion': 'BC',
+                  'addressType': 'mailing',
+                  'postalCode': 'V8W 2C3',
+                  'addressCountry': 'CA'
+                },
+                'deliveryAddress': {
+                  'streetAddress': '220 Buchanan St',
+                  'addressCity': 'Glasgow',
+                  'addressRegion': 'Scotland',
+                  'addressType': 'delivery',
+                  'postalCode': 'G1 2FFF',
+                  'addressCountry': 'UK'
+                }
+              }
+          }
+      })))
+
+    // GET directors
+    get.withArgs('businesses/CP0001191/directors')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            directors: [
+              {
+                'officer': {
+                  'firstName': 'Peter',
+                  'lastName': 'Griffin'
+                },
+                'deliveryAddress': {
+                  'streetAddress': '1012 Douglas St',
+                  'addressCity': 'Victoria',
+                  'addressRegion': 'BC',
+                  'postalCode': 'V8W 2C3',
+                  'addressCountry': 'CA'
+                }
+              },
+              {
+                'officer': {
+                  'firstName': 'Joe',
+                  'lastName': 'Swanson'
+                },
+                'deliveryAddress': {
+                  'streetAddress': '220 Buchanan St',
+                  'addressCity': 'Glasgow',
+                  'addressRegion': 'Scotland',
+                  'postalCode': 'G1 2FFF',
+                  'addressCountry': 'UK'
+                }
+              }
+            ]
+          }
+      })))
+
+    // create a Local Vue and install router (and store) on it
+    const localVue = createLocalVue()
+    localVue.use(VueRouter)
+    const router = mockRouter.mock()
+    router.push({ name: 'dashboard' })
+
+    wrapper = shallowMount(App, {
+      localVue,
+      router,
+      store,
+      vuetify })
+    vm = wrapper.vm
+
+    await flushPromises()
+  })
+
+  afterEach(() => {
+    sinon.restore()
+    wrapper.destroy()
+  })
+
+  it('gets Keycloak Roles and Auth Roles properly', () => {
+    expect(vm.$store.getters.isRoleStaff).toBe(true)
+    expect(vm.$store.getters.isRoleEdit).toBe(true)
+    expect(vm.$store.getters.isRoleView).toBe(true)
+  })
+
+  it('fetches Business Info properly', () => {
+    expect(vm.$store.state.businessEmail).toEqual('name@mail.com')
+    expect(vm.$store.state.businessPhone).toEqual('(111)-222-3333')
+    expect(vm.$store.state.businessPhoneExtension).toEqual('999')
+  })
+
+  it('initializes Current Date properly', () => {
+    const today = new Date()
+    const year = today.getFullYear().toString()
+    const month = (today.getMonth() + 1).toString().padStart(2, '0')
+    const date = today.getDate().toString().padStart(2, '0')
+    const currentDate = `${year}-${month}-${date}`
+    expect(vm.$store.state.currentDate).toEqual(currentDate)
+  })
+
+  it('fetches Entity Info properly', () => {
+    expect(vm.$store.state.entityName).toBe('TEST NAME')
+    expect(vm.$store.state.entityStatus).toBe('GOODSTANDING')
+    expect(vm.$store.state.entityBusinessNo).toBe('123456789')
+    expect(vm.$store.state.entityIncNo).toBe('CP0001191')
+    expect(vm.$store.state.lastPreLoadFilingDate).toBe('2019-08-14')
+    expect(vm.$store.state.entityFoundingDate).toBe('2000-07-13T00:00:00+00:00')
+    expect(vm.$store.state.lastAgmDate).toBe('2019-08-16')
+  })
+
+  it('fetches Tasks properly', () => {
+    expect(vm.$store.state.tasks.length).toBe(3)
+    expect(vm.$store.state.tasks[0].task.todo.header.ARFilingYear).toBe(2017)
+    expect(vm.$store.state.tasks[1].task.todo.header.ARFilingYear).toBe(2018)
+    expect(vm.$store.state.tasks[2].task.todo.header.ARFilingYear).toBe(2019)
+  })
+
+  it('fetches Filings properly', () => {
+    expect(vm.$store.state.filings.length).toBe(3)
+    expect(vm.$store.state.filings[0].filing.header.name).toBe('annualReport')
+    expect(vm.$store.state.filings[1].filing.header.name).toBe('changeOfDirectors')
+    expect(vm.$store.state.filings[2].filing.header.name).toBe('changeOfAddress')
+  })
+
+  it('fetches Addresses properly', () => {
+    expect(vm.$store.state.registeredAddress.mailingAddress.addressCity).toBe('Victoria')
+    expect(vm.$store.state.registeredAddress.deliveryAddress.addressCity).toBe('Glasgow')
+
+    // These values have been assigned in the mockResponse but are expected to be filtered out by front-end logic.
+    expect(vm.$store.state.registeredAddress.addressType).toBeUndefined()
+  })
+
+  it('fetches Directors properly', () => {
+    expect(vm.$store.state.directors.length).toBe(2)
+    expect(vm.$store.state.directors[0].officer.lastName).toBe('Griffin')
+    expect(vm.$store.state.directors[1].officer.lastName).toBe('Swanson')
+  })
+})
+
+describe('App as a BCOMP', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
+
+  beforeAll(() => {
+    sessionStorage.clear()
+    // we need a token that can get parsed properly (will be expired but doesn't matter for tests)
+    // must include keycloakRoles=["view", "edit", "staff"]
+    sessionStorage.setItem('KEYCLOAK_TOKEN', 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUbWdtZUk0MnVsdUZ0N3F' +
+      'QbmUtcTEzdDUwa0JDbjF3bHF6dHN0UGdUM1dFIn0.eyJqdGkiOiI0MmMzOWQzYi1iMTZkLTRiYWMtOWU1Ny1hNDYyZjQ3NWY0M2UiLCJleHAiO' +
+      'jE1NzUwNzI4MTEsIm5iZiI6MCwiaWF0IjoxNTc1MDQ0MDExLCJpc3MiOiJodHRwczovL3Nzby1kZXYucGF0aGZpbmRlci5nb3YuYmMuY2EvYXV' +
+      '0aC9yZWFsbXMvZmNmMGtwcXIiLCJhdWQiOlsic2JjLWF1dGgtd2ViIiwiYWNjb3VudCJdLCJzdWIiOiI4ZTVkZDYzNS01OGRkLTQ5YzUtYmViM' +
+      'S00NmE1ZDVhMTYzNWMiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJzYmMtYXV0aC13ZWIiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiI' +
+      '5OGQ3Y2Y2Zi0xYTQ1LTQzMzUtYWU0OC02YzBiNTdlMGYwNTAiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHA6Ly8xOTIuMTY4L' +
+      'jAuMTM6ODA4MC8iLCIxOTIuMTY4LjAuMTMiLCIqIiwiaHR0cDovLzE5Mi4xNjguMC4xMzo4MDgwIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI' +
+      '6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3Vud' +
+      'CI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiIiLCJ' +
+      'yb2xlcyI6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl0sInByZWZlcnJlZF91c2VybmFtZSI6I' +
+      'mJjMDAwNzI5MSIsImxvZ2luU291cmNlIjoiUEFTU0NPREUiLCJ1c2VybmFtZSI6ImJjMDAwNzI5MSJ9.GYKmp5SQxZYTEkltSgaM3LMNcmuo_n' +
+      'b88wrYb6LbRk1BtCC0wU6Uu5zij_6mwXKyJ3dQ0L2EWR0eEqDuKzjWKVkIvQujXKzc8H9PPYPhgRqwdDr2qOglJrT2lJTkGZvPPqI217J2iiVW' +
+      'OutPePeAmozIQhmf5jlZBW_J8qSzx9GmkQvT41hxpNLkaMPjPYVM2Iy6vL4Pnu0Xma-wCN1GCPwvJGQXCuh3IsR_iTMoig8qcFS0a0lUTx_cCj' +
+      'G-zf_goG4vDTeKn6Mk50FToRtYGXkzWdfQn1T_yeS_2zrL8Ifg1QhJe74U_w40v4ikAFl-BofYnIRjopP57H-5g9_SGg')
+    sessionStorage.setItem('BUSINESS_ID', 'BC0007291')
+  })
+
+  beforeEach(async () => {
+    const get = sinon.stub(axios, 'get')
+
+    // GET authorizations (role)
+    get.withArgs('BC0007291/authorizations')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            roles: ['edit', 'view']
+          }
+      })))
+
+    // GET business info from Auth API
+    get.withArgs('BC0007291')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            contacts: [
+              {
+                email: 'name@mail.com',
+                phone: '(111)-222-3333',
+                phoneExtension: '999'
+              }
+            ]
+          }
+      })))
+
+    // GET entity info from Legal API
+    get.withArgs('businesses/BC0007291')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            // Legal API Business data
+            business: {
+              legalName: 'TEST NAME',
+              status: 'GOODSTANDING',
+              taxId: '123456789',
+              identifier: 'BC0007291',
+              lastLedgerTimestamp: '2019-08-14T22:27:12+00:00',
+              foundingDate: '2000-07-13T00:00:00+00:00',
+              lastAnnualGeneralMeetingDate: '2019-08-16',
+              legalType: null
+            }
+          }
+      })))
+
+    // GET tasks
+    get.withArgs('businesses/BC0007291/tasks')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            'tasks': [
+              {
+                'task': {
+                  'todo': {
+                    'header': {
+                      'name': 'annualReport',
+                      'ARFilingYear': 2017,
+                      'status': 'NEW'
+                    }
+                  }
+                },
+                'enabled': true,
+                'order': 1
+              },
+              {
+                'task': {
+                  'todo': {
+                    'header': {
+                      'name': 'annualReport',
+                      'ARFilingYear': 2018,
+                      'status': 'NEW'
+                    }
+                  }
+                },
+                'enabled': false,
+                'order': 2
+              },
+              {
+                'task': {
+                  'todo': {
+                    'header': {
+                      'name': 'annualReport',
+                      'ARFilingYear': 2019,
+                      'status': 'NEW'
+                    }
+                  }
+                },
+                'enabled': false,
+                'order': 3
+              }
+            ]
+          }
+      })))
+
+    // GET filings
+    get.withArgs('businesses/BC0007291/filings')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -487,7 +507,7 @@ describe('BCOMP APP', () => {
       })))
 
     // GET addresses
-    get.withArgs('BC0007291/addresses')
+    get.withArgs('businesses/BC0007291/addresses')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -533,7 +553,7 @@ describe('BCOMP APP', () => {
       })))
 
     // GET directors
-    get.withArgs('BC0007291/directors')
+    get.withArgs('businesses/BC0007291/directors')
       .returns(new Promise((resolve) => resolve({
         data:
           {
@@ -585,7 +605,9 @@ describe('BCOMP APP', () => {
     // create a Local Vue and install router (and store) on it
     const localVue = createLocalVue()
     localVue.use(VueRouter)
-    const router = new VueRouter()
+    const router = mockRouter.mock()
+    router.push({ name: 'dashboard' })
+
     wrapper = shallowMount(App, {
       localVue,
       router,
@@ -596,15 +618,12 @@ describe('BCOMP APP', () => {
       } })
     vm = wrapper.vm
 
-    vm.$nextTick(() => {
-      done()
-    })
+    await flushPromises()
   })
 
   afterEach(() => {
     sinon.restore()
     wrapper.destroy()
-    sessionStorage.clear()
   })
 
   it('gets Keycloak Roles and Auth Roles properly', () => {
@@ -671,5 +690,275 @@ describe('BCOMP APP', () => {
     expect(vm.$store.state.directors.length).toBe(2)
     expect(vm.$store.state.directors[0].officer.lastName).toBe('Griffin')
     expect(vm.$store.state.directors[1].officer.lastName).toBe('Swanson')
+  })
+})
+
+describe('App as a Name Request', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
+
+  beforeAll(() => {
+    sessionStorage.clear()
+    // we need a token that can get parsed properly (will be expired but doesn't matter for tests)
+    sessionStorage.setItem('KEYCLOAK_TOKEN', 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUbWdtZUk0MnVsdUZ0N3F' +
+      'QbmUtcTEzdDUwa0JDbjF3bHF6dHN0UGdUM1dFIn0.eyJqdGkiOiI0MmMzOWQzYi1iMTZkLTRiYWMtOWU1Ny1hNDYyZjQ3NWY0M2UiLCJleHAiO' +
+      'jE1NzUwNzI4MTEsIm5iZiI6MCwiaWF0IjoxNTc1MDQ0MDExLCJpc3MiOiJodHRwczovL3Nzby1kZXYucGF0aGZpbmRlci5nb3YuYmMuY2EvYXV' +
+      '0aC9yZWFsbXMvZmNmMGtwcXIiLCJhdWQiOlsic2JjLWF1dGgtd2ViIiwiYWNjb3VudCJdLCJzdWIiOiI4ZTVkZDYzNS01OGRkLTQ5YzUtYmViM' +
+      'S00NmE1ZDVhMTYzNWMiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJzYmMtYXV0aC13ZWIiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiI' +
+      '5OGQ3Y2Y2Zi0xYTQ1LTQzMzUtYWU0OC02YzBiNTdlMGYwNTAiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHA6Ly8xOTIuMTY4L' +
+      'jAuMTM6ODA4MC8iLCIxOTIuMTY4LjAuMTMiLCIqIiwiaHR0cDovLzE5Mi4xNjguMC4xMzo4MDgwIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI' +
+      '6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3Vud' +
+      'CI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiIiLCJ' +
+      'yb2xlcyI6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl0sInByZWZlcnJlZF91c2VybmFtZSI6I' +
+      'mJjMDAwNzI5MSIsImxvZ2luU291cmNlIjoiUEFTU0NPREUiLCJ1c2VybmFtZSI6ImJjMDAwNzI5MSJ9.GYKmp5SQxZYTEkltSgaM3LMNcmuo_n' +
+      'b88wrYb6LbRk1BtCC0wU6Uu5zij_6mwXKyJ3dQ0L2EWR0eEqDuKzjWKVkIvQujXKzc8H9PPYPhgRqwdDr2qOglJrT2lJTkGZvPPqI217J2iiVW' +
+      'OutPePeAmozIQhmf5jlZBW_J8qSzx9GmkQvT41hxpNLkaMPjPYVM2Iy6vL4Pnu0Xma-wCN1GCPwvJGQXCuh3IsR_iTMoig8qcFS0a0lUTx_cCj' +
+      'G-zf_goG4vDTeKn6Mk50FToRtYGXkzWdfQn1T_yeS_2zrL8Ifg1QhJe74U_w40v4ikAFl-BofYnIRjopP57H-5g9_SGg')
+    sessionStorage.setItem('NR_NUMBER', 'NR_1234567')
+  })
+
+  beforeEach(async ()=> {
+    const get = sinon.stub(axios, 'get')
+
+    // GET authorizations (role)
+    get.withArgs('NR%201234567/authorizations')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            roles: ['edit', 'view']
+          }
+      })))
+
+    // GET namex access token
+    // FUTURE: update this when API returns New Incorporation task (#3102)
+    sinon.stub(axios, 'post')
+      .withArgs('https://sso-dev.pathfinder.gov.bc.ca/auth/realms/sbc/protocol/openid-connect/token')
+      .returns(new Promise((resolve) => resolve({ data: { access_token: 'abc' } })))
+
+    // GET NR data
+    // FUTURE: update this when API returns New Incorporation task (#3102)
+    get.withArgs('https://namex-dev.pathfinder.gov.bc.ca/api/v1/requests/NR%201234567')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            expirationDate: 'Thu, 31 Dec 2099 23:59:59 GMT',
+            names: [
+              {
+                name: 'My Name Request',
+                consumptionDate: null
+              }
+            ],
+            nrNum: 'NR 1234567',
+            requestTypeCd: 'XX',
+            state: 'APPROVED'
+          }
+      })))
+
+    // GET tasks
+    get.withArgs('businesses/NR%201234567/tasks')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            tasks: []
+          }
+      })))
+
+    // GET filings
+    get.withArgs('businesses/NR%201234567/filings')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            filings: []
+          }
+      })))
+
+    // create a Local Vue and install router on it
+    const localVue = createLocalVue()
+    localVue.use(VueRouter)
+    const router = mockRouter.mock()
+    router.push({ name: 'dashboard' })
+
+    wrapper = shallowMount(App, {
+      localVue,
+      router,
+      store,
+      vuetify })
+    vm = wrapper.vm
+
+    await flushPromises()
+  })
+
+  afterEach(() => {
+    sinon.restore()
+    wrapper.destroy()
+  })
+
+  it('fetches NR data properly', () => {
+    expect(vm.nameRequest.expirationDate).toBe('Thu, 31 Dec 2099 23:59:59 GMT')
+    expect(vm.nameRequest.names[0].name).toBe('My Name Request')
+    expect(vm.nameRequest.names[0].consumptionDate).toBeNull()
+    expect(vm.nameRequest.nrNum).toBe('NR 1234567')
+    expect(vm.nameRequest.requestTypeCd).toBe('XX')
+    expect(vm.nameRequest.state).toBe('APPROVED')
+
+    expect(vm.$store.state.entityName).toBe('My Name Request')
+    expect(vm.$store.state.entityType).toBe('XX')
+    expect(vm.$store.state.entityIncNo).toBe('NR 1234567')
+  })
+
+  it('fetches Tasks properly', () => {
+    expect(vm.$store.state.tasks.length).toBe(1)
+    expect(vm.$store.state.tasks[0].enabled).toBe(true)
+    expect(vm.$store.state.tasks[0].order).toBe(1)
+    expect(vm.$store.state.tasks[0].task.todo.nameRequest).not.toBeUndefined()
+    expect(vm.$store.state.tasks[0].task.todo.header.name).toBe('nameRequest')
+    expect(vm.$store.state.tasks[0].task.todo.header.status).toBe('NEW')
+  })
+
+  it('fetches Filings properly', () => {
+    expect(vm.$store.state.filings.length).toBe(0)
+  })
+})
+
+describe('App as an Incorporation Application', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
+
+  beforeAll(() => {
+    sessionStorage.clear()
+    // we need a token that can get parsed properly (will be expired but doesn't matter for tests)
+    sessionStorage.setItem('KEYCLOAK_TOKEN', 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUbWdtZUk0MnVsdUZ0N3F' +
+      'QbmUtcTEzdDUwa0JDbjF3bHF6dHN0UGdUM1dFIn0.eyJqdGkiOiI0MmMzOWQzYi1iMTZkLTRiYWMtOWU1Ny1hNDYyZjQ3NWY0M2UiLCJleHAiO' +
+      'jE1NzUwNzI4MTEsIm5iZiI6MCwiaWF0IjoxNTc1MDQ0MDExLCJpc3MiOiJodHRwczovL3Nzby1kZXYucGF0aGZpbmRlci5nb3YuYmMuY2EvYXV' +
+      '0aC9yZWFsbXMvZmNmMGtwcXIiLCJhdWQiOlsic2JjLWF1dGgtd2ViIiwiYWNjb3VudCJdLCJzdWIiOiI4ZTVkZDYzNS01OGRkLTQ5YzUtYmViM' +
+      'S00NmE1ZDVhMTYzNWMiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJzYmMtYXV0aC13ZWIiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiI' +
+      '5OGQ3Y2Y2Zi0xYTQ1LTQzMzUtYWU0OC02YzBiNTdlMGYwNTAiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHA6Ly8xOTIuMTY4L' +
+      'jAuMTM6ODA4MC8iLCIxOTIuMTY4LjAuMTMiLCIqIiwiaHR0cDovLzE5Mi4xNjguMC4xMzo4MDgwIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI' +
+      '6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3Vud' +
+      'CI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiIiLCJ' +
+      'yb2xlcyI6WyJlZGl0Iiwib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImJhc2ljIl0sInByZWZlcnJlZF91c2VybmFtZSI6I' +
+      'mJjMDAwNzI5MSIsImxvZ2luU291cmNlIjoiUEFTU0NPREUiLCJ1c2VybmFtZSI6ImJjMDAwNzI5MSJ9.GYKmp5SQxZYTEkltSgaM3LMNcmuo_n' +
+      'b88wrYb6LbRk1BtCC0wU6Uu5zij_6mwXKyJ3dQ0L2EWR0eEqDuKzjWKVkIvQujXKzc8H9PPYPhgRqwdDr2qOglJrT2lJTkGZvPPqI217J2iiVW' +
+      'OutPePeAmozIQhmf5jlZBW_J8qSzx9GmkQvT41hxpNLkaMPjPYVM2Iy6vL4Pnu0Xma-wCN1GCPwvJGQXCuh3IsR_iTMoig8qcFS0a0lUTx_cCj' +
+      'G-zf_goG4vDTeKn6Mk50FToRtYGXkzWdfQn1T_yeS_2zrL8Ifg1QhJe74U_w40v4ikAFl-BofYnIRjopP57H-5g9_SGg')
+    sessionStorage.setItem('NR_NUMBER', 'NR_1234567')
+  })
+
+  beforeEach(async ()=> {
+    const get = sinon.stub(axios, 'get')
+
+    // GET authorizations (role)
+    get.withArgs('NR%201234567/authorizations')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            roles: ['edit', 'view']
+          }
+      })))
+
+    // GET namex access token
+    // FUTURE: update this when API returns New Incorporation task (#3102)
+    sinon.stub(axios, 'post')
+      .withArgs('https://sso-dev.pathfinder.gov.bc.ca/auth/realms/sbc/protocol/openid-connect/token')
+      .returns(new Promise((resolve) => resolve({ data: { access_token: 'abc' } })))
+
+    // GET NR data
+    // FUTURE: update this when API returns New Incorporation task (#3102)
+    get.withArgs('https://namex-dev.pathfinder.gov.bc.ca/api/v1/requests/NR%201234567')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            expirationDate: 'Thu, 31 Dec 2099 23:59:59 GMT',
+            names: [
+              {
+                name: 'My Name Request',
+                consumptionDate: null
+              }
+            ],
+            nrNum: 'NR 1234567',
+            requestTypeCd: 'XX',
+            state: 'APPROVED'
+          }
+      })))
+
+    // GET tasks
+    get.withArgs('businesses/NR%201234567/tasks')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            tasks: [
+              {
+                enabled: true,
+                order: 1,
+                task: {
+                  todo: {
+                    nameRequest: {
+                      zig: 'zag'
+                    },
+                    header: {
+                      name: 'incorporationApplication',
+                      status: 'NEW'
+                    }
+                  }
+                }
+              }
+            ]
+          }
+      })))
+
+    // GET filings
+    get.withArgs('businesses/NR%201234567/filings')
+      .returns(new Promise((resolve) => resolve({
+        data:
+          {
+            'filings': []
+          }
+      })))
+
+    // create a Local Vue and install router on it
+    const localVue = createLocalVue()
+    localVue.use(VueRouter)
+    const router = mockRouter.mock()
+    router.push({ name: 'dashboard' })
+
+    wrapper = shallowMount(App, {
+      sync: false,
+      localVue,
+      router,
+      store,
+      vuetify })
+    vm = wrapper.vm
+
+    await flushPromises()
+  })
+
+  afterEach(() => {
+    sinon.restore()
+    wrapper.destroy()
+  })
+
+  it('fetches NR data properly', () => {
+    expect(vm.nameRequest.names[0].name).toBe('My Name Request')
+    expect(vm.nameRequest.names[0].consumptionDate).toBeNull()
+    expect(vm.nameRequest.nrNum).toBe('NR 1234567')
+    expect(vm.nameRequest.requestTypeCd).toBe('XX')
+    expect(vm.nameRequest.state).toBe('APPROVED')
+
+    expect(vm.$store.state.entityName).toBe('My Name Request')
+    expect(vm.$store.state.entityType).toBe('XX')
+    expect(vm.$store.state.entityIncNo).toBe('NR 1234567')
+  })
+
+  it('fetches Tasks properly', () => {
+    expect(vm.$store.state.tasks.length).toBe(1)
+    expect(vm.$store.state.tasks[0].enabled).toBe(true)
+    expect(vm.$store.state.tasks[0].order).toBe(1)
+    expect(vm.$store.state.tasks[0].task.todo.header.nameRequest).toBeUndefined()
+    expect(vm.$store.state.tasks[0].task.todo.header.name).toBe('incorporationApplication')
+    expect(vm.$store.state.tasks[0].task.todo.header.status).toBe('NEW')
+  })
+
+  it('fetches Filings properly', () => {
+    expect(vm.$store.state.filings.length).toBe(0)
   })
 })

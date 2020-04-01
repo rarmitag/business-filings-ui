@@ -2,21 +2,20 @@ import Vue from 'vue'
 import Vuetify from 'vuetify'
 import Vuelidate from 'vuelidate'
 import { mount } from '@vue/test-utils'
-
-import store from '@/store/store'
+import { getVuexStore } from '@/store'
 import DirectorListSm from '@/components/Dashboard/DirectorListSm.vue'
-import { EntityTypes } from '@/enums'
 
 Vue.use(Vuetify)
 Vue.use(Vuelidate)
 
 const vuetify = new Vuetify({})
+const store = getVuexStore()
 
 describe('DirectorListSm', () => {
   it('handles empty data as a coop', done => {
     // init store
     store.state.directors = []
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
 
     const wrapper = mount(DirectorListSm, { store, vuetify })
     const vm = wrapper.vm as any
@@ -32,7 +31,7 @@ describe('DirectorListSm', () => {
 
   it('displays multiple directors as a coop', done => {
     // init store
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
     store.state.directors = [
       {
         'officer': {
@@ -78,7 +77,7 @@ describe('DirectorListSm', () => {
   it('handles empty data as a coop', done => {
     // init store
     store.state.directors = []
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
 
     const wrapper = mount(DirectorListSm, { store, vuetify })
     const vm = wrapper.vm as any
@@ -102,7 +101,7 @@ describe('DirectorListSm', () => {
     }
 
     // init store
-    store.state.entityType = EntityTypes.BCOMP
+    store.state.entityType = 'BC'
     store.state.directors = [
       {
         'officer': {

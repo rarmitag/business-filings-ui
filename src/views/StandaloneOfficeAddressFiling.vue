@@ -7,7 +7,7 @@
 
     <resume-error-dialog
       :dialog="resumeErrorDialog"
-      @exit="navigateToDashboard"
+      @exit="navigateToDashboard(true)"
       attach="#standalone-office-address"
     />
 
@@ -17,15 +17,15 @@
       :disableRetry="busySaving"
       :errors="saveErrors"
       :warnings="saveWarnings"
-      @exit="navigateToDashboard"
-      @retry="onClickFilePay"
-      @okay="resetErrors"
+      @exit="navigateToDashboard(true)"
+      @retry="onClickFilePay()"
+      @okay="resetErrors()"
       attach="#standalone-office-address"
     />
 
     <payment-error-dialog
       :dialog="paymentErrorDialog"
-      @exit="navigateToDashboard"
+      @exit="navigateToDashboard(true)"
       attach="#standalone-office-address"
     />
 
@@ -45,13 +45,12 @@
               <h1 id="filing-header">Address Change</h1>
 
               <p>
-                <span>Please change your Registered Office Address</span>
-                <span v-if="entityFilter(EntityTypes.BCOMP)"> and Records Address</span>
-                <span>.</span>
+                <span v-if="isCoop()">Please change your Registered Office Address.</span>
+                <span v-if="isBComp()">Please change your Registered Office Address and Records Address.</span>
               </p>
 
               <v-alert type="info" outlined
-                v-if="entityFilter(EntityTypes.BCOMP)"
+                v-if="isBComp()"
                 icon="mdi-information"
                 class="white-background"
               >
@@ -109,7 +108,7 @@
             >
               <sbc-fee-summary
                 v-bind:filingData="[...filingData]"
-                v-bind:payURL="payAPIURL"
+                v-bind:payURL="payApiUrl"
                 @total-fee="totalFee=$event"
               />
             </affix>
@@ -118,17 +117,21 @@
       </v-row>
     </v-container>
 
-    <!-- TODO: this container should have some container class not 'list-item' class -->
+    <!-- FUTURE: this container should have some container class not 'list-item' class -->
     <v-container id="standalone-office-address-buttons-container" class="list-item">
       <div class="buttons-left">
-        <v-btn id="coa-save-btn" large
+        <v-btn
+          id="coa-save-btn"
+          large
           :disabled="!saveAsDraftEnabled || busySaving"
           :loading="saving"
           @click="onClickSave()"
         >
           <span>Save</span>
         </v-btn>
-        <v-btn id="coa-save-resume-btn" large
+        <v-btn
+          id="coa-save-resume-btn"
+          large
           :disabled="!saveAsDraftEnabled || busySaving"
           :loading="savingResuming"
           @click="onClickSaveResume()"
@@ -157,7 +160,14 @@
             There is no opportunity to change information beyond this point.</span>
         </v-tooltip>
 
-        <v-btn id="coa-cancel-btn" large to="/dashboard" :disabled="busySaving || filingPaying">Cancel</v-btn>
+        <v-btn
+          id="coa-cancel-btn"
+          large
+          :disabled="busySaving"
+          @click="navigateToDashboard()"
+        >
+          <span>Cancel</span>
+        </v-btn>
       </div>
     </v-container>
   </div>
@@ -177,9 +187,10 @@ import SbcFeeSummary from 'sbc-common-components/src/components/SbcFeeSummary.vu
 
 // Constants
 import { PAYMENT_REQUIRED, BAD_REQUEST } from 'http-status-codes'
+import { DASHBOARD } from '@/constants'
 
 // Mixins
-import { EntityFilterMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
+import { CommonMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
 
 // Enums
 import { EntityTypes, FilingCodes, FilingStatus, FilingTypes } from '@/enums'
@@ -197,7 +208,7 @@ export default {
     ResumeErrorDialog,
     SaveErrorDialog
   },
-  mixins: [EntityFilterMixin, FilingMixin, ResourceLookupMixin],
+  mixins: [CommonMixin, FilingMixin, ResourceLookupMixin],
 
   data () {
     return {
@@ -212,9 +223,9 @@ export default {
       certifiedBy: '',
       certifyFormValid: false,
       officeAddressFormValid: true,
-      saving: false,
-      savingResuming: false,
-      filingPaying: false,
+      saving: false, // true only when saving
+      savingResuming: false, // true only when saving and resuming
+      filingPaying: false, // true only when filing and paying
       haveChanges: false,
       saveErrors: [],
       saveWarnings: [],
@@ -239,27 +250,28 @@ export default {
       'entityFoundingDate', 'registeredAddress', 'recordsAddress', 'filingData']),
     ...mapGetters(['isRoleStaff']),
 
-    validated () {
+    validated (): boolean {
       const staffPaymentValid = (!this.isRoleStaff || !this.isPayRequired || this.staffPaymentFormValid)
       const filingDataValid = (this.filingData.length > 0)
 
       return (staffPaymentValid && this.certifyFormValid && this.officeAddressFormValid && filingDataValid)
     },
 
-    busySaving () {
+    /** True when saving, saving and resuming, or filing and paying. */
+    busySaving (): boolean {
       return (this.saving || this.savingResuming || this.filingPaying)
     },
 
-    saveAsDraftEnabled () {
+    saveAsDraftEnabled (): boolean {
       const filingDataValid = (this.filingData.length > 0)
       return (this.officeAddressFormValid && filingDataValid)
     },
 
-    payAPIURL () {
+    payApiUrl (): string {
       return sessionStorage.getItem('PAY_API_URL')
     },
 
-    isPayRequired () {
+    isPayRequired (): boolean {
       // FUTURE: modify rule here as needed
       return (this.totalFee > 0)
     }
@@ -280,11 +292,11 @@ export default {
 
     // NB: filing id of 0 means "new"
     // otherwise it's a draft filing id
-    this.filingId = +this.$route.params.id // number (may be NaN)
+    this.filingId = +this.$route.params.filingId // number (may be NaN)
 
-    // if tombstone data isn't set, route to home
+    // if tombstone data isn't set, go back to dashboard
     if (!this.entityIncNo || isNaN(this.filingId)) {
-      this.$router.push('/')
+      this.$router.push({ name: DASHBOARD })
     } else if (this.filingId > 0) {
       // resume draft filing
       this.loadingMessage = `Resuming Your Address Change`
@@ -343,18 +355,18 @@ export default {
     },
 
     fetchChangeOfAddressFiling () {
-      const url = this.entityIncNo + '/filings/' + this.filingId
+      const url = `businesses/${this.entityIncNo}/filings/${this.filingId}`
       axios.get(url).then(response => {
         if (response && response.data) {
           const filing = response.data.filing
           try {
             // verify data
-            if (!filing) throw new Error('missing filing')
-            if (!filing.header) throw new Error('missing header')
-            if (!filing.business) throw new Error('missing business')
-            if (filing.header.name !== FilingTypes.CHANGE_OF_ADDRESS) throw new Error('invalid filing type')
-            if (filing.business.identifier !== this.entityIncNo) throw new Error('invalid business identifier')
-            if (filing.business.legalName !== this.entityName) throw new Error('invalid business legal name')
+            if (!filing) throw new Error('Missing filing')
+            if (!filing.header) throw new Error('Missing header')
+            if (!filing.business) throw new Error('Missing business')
+            if (filing.header.name !== FilingTypes.CHANGE_OF_ADDRESS) throw new Error('Invalid filing type')
+            if (filing.business.identifier !== this.entityIncNo) throw new Error('Invalid business identifier')
+            if (filing.business.legalName !== this.entityName) throw new Error('Invalid business legal name')
 
             // load Certified By but not Date
             this.certifiedBy = filing.header.certifiedBy
@@ -397,7 +409,7 @@ export default {
             // eslint-disable-next-line no-console
             console.log(`fetchData() error - ${err.message}, filing = ${filing}`)
             this.resumeErrorDialog = true
-            throw new Error('invalid change of address')
+            throw new Error('Invalid change of address')
           }
         } else {
           // eslint-disable-next-line no-console
@@ -428,6 +440,7 @@ export default {
     async onClickSave () {
       // prevent double saving
       if (this.busySaving) return
+
       this.saving = true
       const filing = await this.saveFiling(true)
 
@@ -444,9 +457,9 @@ export default {
 
       this.savingResuming = true
       const filing = await this.saveFiling(true)
-      // on success, route to Home URL
+      // on success, go to dashboard
       if (filing) {
-        this.$router.push('/')
+        this.$router.push({ name: DASHBOARD })
       }
       this.savingResuming = false
     },
@@ -469,16 +482,16 @@ export default {
         if (!prePaidFiling) {
           const paymentToken = filing.header.paymentToken
           const baseUrl = sessionStorage.getItem('BASE_URL')
-          const returnURL = encodeURIComponent(baseUrl + 'dashboard?filing_id=' + filingId)
+          const returnUrl = encodeURIComponent(baseUrl + '?filing_id=' + filingId)
           const authUrl = sessionStorage.getItem('AUTH_URL')
-          const payURL = authUrl + 'makepayment/' + paymentToken + '/' + returnURL
+          const payUrl = authUrl + 'makepayment/' + paymentToken + '/' + returnUrl
 
           // assume Pay URL is always reachable
           // otherwise, user will have to retry payment later
-          window.location.assign(payURL)
+          window.location.assign(payUrl)
         } else {
           // route directly to dashboard
-          this.$router.push('/dashboard?filing_id=' + filingId)
+          this.$router.push({ name: DASHBOARD, query: { filing_id: filingId } })
         }
       }
       this.filingPaying = false
@@ -570,14 +583,14 @@ export default {
 
       if (this.filingId > 0) {
         // we have a filing id, so we are updating an existing filing
-        let url = this.entityIncNo + '/filings/' + this.filingId
+        let url = `businesses/${this.entityIncNo}/filings/${this.filingId}`
         if (isDraft) {
           url += '?draft=true'
         }
         let filing = null
         await axios.put(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
-            throw new Error('invalid API response')
+            throw new Error('Invalid API response')
           }
           filing = res.data.filing
           this.haveChanges = false
@@ -599,14 +612,14 @@ export default {
         return filing
       } else {
         // filing id is 0, so we are saving a new filing
-        let url = this.entityIncNo + '/filings'
+        let url = `businesses/${this.entityIncNo}/filings`
         if (isDraft) {
           url += '?draft=true'
         }
         let filing = null
         await axios.post(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
-            throw new Error('invalid API response')
+            throw new Error('Invalid API response')
           }
           filing = res.data.filing
           this.haveChanges = false
@@ -629,10 +642,9 @@ export default {
       }
     },
 
-    navigateToDashboard () {
-      this.haveChanges = false
-      this.dialog = false
-      this.$router.push('/dashboard')
+    navigateToDashboard (ignoreChanges: boolean = false) {
+      if (ignoreChanges) this.haveChanges = false
+      this.$router.push({ name: DASHBOARD })
     },
 
     resetErrors () {
@@ -645,7 +657,8 @@ export default {
     async hasTasks (businessId) {
       let hasPendingItems = false
       if (this.filingId === 0) {
-        await axios.get(businessId + '/tasks')
+        const url = `businesses/${businessId}/tasks`
+        await axios.get(url)
           .then(response => {
             if (response && response.data && response.data.tasks) {
               response.data.tasks.forEach((task) => {

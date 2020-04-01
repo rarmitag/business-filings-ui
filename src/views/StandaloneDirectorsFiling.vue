@@ -7,7 +7,7 @@
 
     <resume-error-dialog
       :dialog="resumeErrorDialog"
-      @exit="navigateToDashboard"
+      @exit="navigateToDashboard(true)"
       attach="#standalone-directors"
     />
 
@@ -17,15 +17,15 @@
       :disableRetry="busySaving"
       :errors="saveErrors"
       :warnings="saveWarnings"
-      @exit="navigateToDashboard"
-      @retry="onClickFilePay"
-      @okay="resetErrors"
+      @exit="navigateToDashboard(true)"
+      @retry="onClickFilePay()"
+      @okay="resetErrors()"
       attach="#standalone-directors"
     />
 
     <payment-error-dialog
       :dialog="paymentErrorDialog"
-      @exit="navigateToDashboard"
+      @exit="navigateToDashboard(true)"
       attach="#standalone-directors"
     />
 
@@ -51,7 +51,7 @@
                       one for each unique date.</p>
 
                   <v-alert type="info" outlined
-                    v-if="!entityFilter(EntityTypes.BCOMP)"
+                    v-if="!isBComp()"
                     icon="mdi-information"
                     class="white-background"
                   >
@@ -120,7 +120,7 @@
                 >
                   <sbc-fee-summary
                     v-bind:filingData="[...filingData]"
-                    v-bind:payURL="payAPIURL"
+                    v-bind:payURL="payApiUrl"
                     @total-fee="totalFee=$event"
                   />
                 </affix>
@@ -129,17 +129,21 @@
           </v-row>
         </v-container>
 
-        <!-- TODO: this container should have some container class not 'list-item' class -->
+        <!-- FUTURE: this container should have some container class not 'list-item' class -->
         <v-container id="standalone-directors-buttons-container" class="list-item">
           <div class="buttons-left">
-            <v-btn id="cod-save-btn" large
+            <v-btn
+              id="cod-save-btn"
+              large
               :disabled="busySaving"
               :loading="saving"
               @click="onClickSave()"
             >
               <span>Save</span>
             </v-btn>
-            <v-btn id="cod-save-resume-btn" large
+            <v-btn
+              id="cod-save-resume-btn"
+              large
               :disabled="busySaving"
               :loading="savingResuming"
               @click="onClickSaveResume()"
@@ -157,7 +161,6 @@
                     color="primary"
                     large
                     :disabled="!validated || busySaving"
-                    :loading="filingPaying"
                     @click="showSummary()"
                   >
                     <span>Next</span>
@@ -167,7 +170,14 @@
               <span>Proceed to Filing Summary</span>
             </v-tooltip>
 
-            <v-btn id="cod-cancel-btn" large to="/dashboard" :disabled="busySaving || filingPaying">Cancel</v-btn>
+            <v-btn
+              id="cod-cancel-btn"
+              large
+              :disabled="busySaving"
+              @click="navigateToDashboard()"
+            >
+              <span>Cancel</span>
+            </v-btn>
           </div>
         </v-container>
       </div>
@@ -234,7 +244,7 @@
                 >
                   <sbc-fee-summary
                     v-bind:filingData="[...filingData]"
-                    v-bind:payURL="payAPIURL"
+                    v-bind:payURL="payApiUrl"
                   />
                 </affix>
               </aside>
@@ -242,12 +252,13 @@
           </v-row>
         </v-container>
 
-        <!-- TODO: this container should have some container class not 'list-item' class -->
+        <!-- FUTURE: this container should have some container class not 'list-item' class -->
         <v-container id="standalone-directors-buttons-container-review" class="list-item">
           <div class="buttons-left">
             <v-btn
               id="cod-back-btn"
               large
+              :disabled="busySaving"
               @click="returnToFiling()"
             >
               <span>Back</span>
@@ -274,6 +285,15 @@
                 There is no opportunity to change information beyond this point.</span>
             </v-tooltip>
           </div>
+
+          <v-btn
+            id="cod-cancel-btn"
+            large
+            :disabled="busySaving"
+            @click="navigateToDashboard()"
+          >
+            <span>Cancel</span>
+          </v-btn>
         </v-container>
       </div>
     </v-fade-transition>
@@ -296,13 +316,11 @@ import { Certify, StaffPayment, SummaryDirectors, SummaryCertify, SummaryStaffPa
 import { ConfirmDialog, PaymentErrorDialog, ResumeErrorDialog, SaveErrorDialog } from '@/components/dialogs'
 
 // Mixins
-import { EntityFilterMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
+import { CommonMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
 
-// Enums
+// Enums and Constants
 import { EntityTypes, FilingCodes, FilingStatus, FilingTypes } from '@/enums'
-
-// Constants
-import { CEASED, APPOINTED, ADDRESSCHANGED, NAMECHANGED } from '@/constants'
+import { CEASED, APPOINTED, ADDRESSCHANGED, NAMECHANGED, DASHBOARD } from '@/constants'
 
 export default {
   name: 'StandaloneDirectorsFiling',
@@ -322,7 +340,7 @@ export default {
     SaveErrorDialog
   },
 
-  mixins: [EntityFilterMixin, FilingMixin, ResourceLookupMixin],
+  mixins: [CommonMixin, FilingMixin, ResourceLookupMixin],
 
   data () {
     return {
@@ -339,9 +357,9 @@ export default {
       directorEditInProgress: false,
       filingId: null,
       loadingMessage: 'Loading...', // initial generic message
-      saving: false,
-      savingResuming: false,
-      filingPaying: false,
+      saving: false as boolean, // true only when saving
+      savingResuming: false as boolean, // true only when saving and resuming
+      filingPaying: false as boolean, // true only when filing and paying
       haveChanges: false,
       saveErrors: [],
       saveWarnings: [],
@@ -370,7 +388,7 @@ export default {
 
     ...mapGetters(['isRoleStaff']),
 
-    validated () {
+    validated (): boolean {
       const staffPaymentValid = (!this.isRoleStaff || !this.isPayRequired || this.staffPaymentFormValid)
       const filingDataValid = (this.filingData.length > 0)
 
@@ -378,15 +396,16 @@ export default {
         !this.directorEditInProgress && this.codDateValid)
     },
 
-    busySaving () {
+    /** True when saving, saving and resuming, or filing and paying. */
+    busySaving (): boolean {
       return (this.saving || this.savingResuming || this.filingPaying)
     },
 
-    payAPIURL () {
+    payApiUrl (): string {
       return sessionStorage.getItem('PAY_API_URL')
     },
 
-    isPayRequired () {
+    isPayRequired (): boolean {
       // FUTURE: modify rule here as needed
       return (this.totalFee > 0)
     }
@@ -407,11 +426,11 @@ export default {
 
     // NB: filing id of 0 means "new"
     // otherwise it's a draft filing id
-    this.filingId = +this.$route.params.id // number (may be NaN)
+    this.filingId = +this.$route.params.filingId // number (may be NaN)
 
-    // if tombstone data isn't set, route to home
+    // if tombstone data isn't set, go back to dashboard
     if (!this.entityIncNo || isNaN(this.filingId)) {
-      this.$router.push('/')
+      this.$router.push({ name: DASHBOARD })
     } else if (this.filingId > 0) {
       // resume draft filing
       this.loadingMessage = `Resuming Your Director Change`
@@ -475,6 +494,7 @@ export default {
     async onClickSave () {
       // prevent double saving
       if (this.busySaving) return
+
       this.saving = true
       const filing = await this.saveFiling(true)
       if (filing) {
@@ -490,9 +510,9 @@ export default {
 
       this.savingResuming = true
       const filing = await this.saveFiling(true)
-      // on success, route to Home URL
+      // on success, go to dashboard
       if (filing) {
-        this.$router.push('/')
+        this.$router.push({ name: DASHBOARD })
       }
       this.savingResuming = false
     },
@@ -515,16 +535,16 @@ export default {
         if (!prePaidFiling) {
           const paymentToken = filing.header.paymentToken
           const baseUrl = sessionStorage.getItem('BASE_URL')
-          const returnURL = encodeURIComponent(baseUrl + 'dashboard?filing_id=' + filingId)
+          const returnUrl = encodeURIComponent(baseUrl + '?filing_id=' + filingId)
           const authUrl = sessionStorage.getItem('AUTH_URL')
-          const payURL = authUrl + 'makepayment/' + paymentToken + '/' + returnURL
+          const payUrl = authUrl + 'makepayment/' + paymentToken + '/' + returnUrl
 
           // assume Pay URL is always reachable
           // otherwise, user will have to retry payment later
-          window.location.assign(payURL)
+          window.location.assign(payUrl)
         } else {
           // route directly to dashboard
-          this.$router.push('/dashboard?filing_id=' + filingId)
+          this.$router.push({ name: DASHBOARD, query: { filing_id: filingId } })
         }
       }
       this.filingPaying = false
@@ -594,14 +614,14 @@ export default {
 
       if (this.filingId > 0) {
         // we have a filing id, so we are updating an existing filing
-        let url = this.entityIncNo + '/filings/' + this.filingId
+        let url = `businesses/${this.entityIncNo}/filings/${this.filingId}`
         if (isDraft) {
           url += '?draft=true'
         }
         let filing = null
         await axios.put(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
-            throw new Error('invalid API response')
+            throw new Error('Invalid API response')
           }
           filing = res.data.filing
           this.haveChanges = false
@@ -623,14 +643,14 @@ export default {
         return filing
       } else {
         // filing id is 0, so we are saving a new filing
-        let url = this.entityIncNo + '/filings'
+        let url = `businesses/${this.entityIncNo}/filings`
         if (isDraft) {
           url += '?draft=true'
         }
         let filing = null
         await axios.post(url, data).then(res => {
           if (!res || !res.data || !res.data.filing) {
-            throw new Error('invalid API response')
+            throw new Error('Invalid API response')
           }
           filing = res.data.filing
           this.haveChanges = false
@@ -653,25 +673,24 @@ export default {
       }
     },
 
-    navigateToDashboard () {
-      this.haveChanges = false
-      this.dialog = false
-      this.$router.push('/dashboard')
+    navigateToDashboard (ignoreChanges: boolean = false) {
+      if (ignoreChanges) this.haveChanges = false
+      this.$router.push({ name: DASHBOARD })
     },
 
     fetchChangeOfDirectors () {
-      const url = this.entityIncNo + '/filings/' + this.filingId
+      const url = `businesses/${this.entityIncNo}/filings/${this.filingId}`
       axios.get(url).then(response => {
         if (response && response.data) {
           const filing = response.data.filing
           try {
             // verify data
-            if (!filing) throw new Error('missing filing')
-            if (!filing.header) throw new Error('missing header')
-            if (!filing.business) throw new Error('missing business')
-            if (filing.header.name !== FilingTypes.CHANGE_OF_DIRECTORS) throw new Error('invalid filing type')
-            if (filing.business.identifier !== this.entityIncNo) throw new Error('invalid business identifier')
-            if (filing.business.legalName !== this.entityName) throw new Error('invalid business legal name')
+            if (!filing) throw new Error('Missing filing')
+            if (!filing.header) throw new Error('Missing header')
+            if (!filing.business) throw new Error('Missing business')
+            if (filing.header.name !== FilingTypes.CHANGE_OF_DIRECTORS) throw new Error('Invalid filing type')
+            if (filing.business.identifier !== this.entityIncNo) throw new Error('Invalid business identifier')
+            if (filing.business.legalName !== this.entityName) throw new Error('Invalid business legal name')
 
             // load Certified By but not Date
             this.certifiedBy = filing.header.certifiedBy
@@ -713,7 +732,7 @@ export default {
                   this.updateFilingData('add', FilingCodes.FREE_DIRECTOR_CHANGE_OT, this.isPriority, this.isWaiveFees)
                 }
               } else {
-                throw new Error('invalid change of directors')
+                throw new Error('Invalid change of directors')
               }
             } else {
               // To handle the condition of save as draft without change of director
@@ -767,7 +786,8 @@ export default {
     async hasTasks (businessId) {
       let hasPendingItems = false
       if (this.filingId === 0) {
-        await axios.get(businessId + '/tasks')
+        const url = `businesses/${businessId}/tasks`
+        await axios.get(url)
           .then(response => {
             if (response && response.data && response.data.tasks) {
               response.data.tasks.forEach((task) => {

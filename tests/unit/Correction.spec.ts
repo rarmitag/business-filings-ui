@@ -4,7 +4,7 @@ import Vuetify from 'vuetify'
 import VueRouter from 'vue-router'
 import sinon from 'sinon'
 import axios from '@/axios-auth'
-import store from '@/store/store'
+import { getVuexStore } from '@/store'
 import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
 import mockRouter from './mockRouter'
 import flushPromises from 'flush-promises'
@@ -14,15 +14,14 @@ import Correction from '@/views/Correction.vue'
 import { DetailComment, Certify, StaffPayment } from '@/components/common'
 import SbcFeeSummary from 'sbc-common-components/src/components/SbcFeeSummary.vue'
 
-// Enums
-import { EntityTypes, FilingCodes } from '@/enums'
-
-Vue.use(Vuetify)
 // suppress "avoid mutating a prop directly" warnings
 // https://vue-test-utils.vuejs.org/api/config.html#silent
 Vue.config.silent = true
 
+Vue.use(Vuetify)
+
 const vuetify = new Vuetify({})
+const store = getVuexStore()
 
 describe('Correction - UI', () => {
   let sinonAxiosGet
@@ -32,7 +31,7 @@ describe('Correction - UI', () => {
 
     // mock "get orig filing" endpoint
     sinonAxiosGet
-      .withArgs('CP1234567/filings/123')
+      .withArgs('businesses/CP1234567/filings/123')
       .returns(new Promise(resolve =>
         resolve({
           data: {
@@ -56,7 +55,7 @@ describe('Correction - UI', () => {
 
     // init store
     store.state.currentDate = '2020-03-04'
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
     store.state.entityName = 'My Test Entity'
     store.state.entityIncNo = 'CP1234567'
     store.state.entityFoundingDate = '1971-05-12T00:00:00-00:00'
@@ -183,12 +182,12 @@ describe('Correction - UI', () => {
 
   it('initializes and fetches original filing properly', async () => {
     // mock $route
-    const $route = { params: { id: '0', correctedFilingId: '123' } }
+    const $route = { params: { filingId: '0', correctedFilingId: '123' } }
 
     // create local Vue and mock router
     createLocalVue().use(VueRouter)
     const router = mockRouter.mock()
-    router.push({ name: 'correction', params: { id: '0', correctedFilingId: '123' } })
+    router.push({ name: 'correction', params: { filingId: '0', correctedFilingId: '123' } })
 
     const wrapper = mount(Correction, {
       store,
@@ -222,13 +221,13 @@ describe('Correction - UI', () => {
   it('saves draft correction properly', async () => {
     // mock "get tasks" endpoint - needed for hasTasks()
     sinonAxiosGet
-      .withArgs('CP1234567/tasks')
+      .withArgs('businesses/CP1234567/tasks')
       .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
 
     // mock "save draft" endpoint (garbage response data - we aren't testing that)
     const spy = sinon
       .stub(axios, 'post')
-      .withArgs('CP1234567/filings?draft=true')
+      .withArgs('businesses/CP1234567/filings?draft=true')
       .returns(new Promise(resolve =>
         resolve({
           data: {
@@ -243,12 +242,12 @@ describe('Correction - UI', () => {
       ))
 
     // mock $route
-    const $route = { params: { id: '0', correctedFilingId: '123' } }
+    const $route = { params: { filingId: '0', correctedFilingId: '123' } }
 
     // create local Vue and mock router
     createLocalVue().use(VueRouter)
     const router = mockRouter.mock()
-    router.push({ name: 'correction', params: { id: '0', correctedFilingId: '123' } })
+    router.push({ name: 'correction', params: { filingId: '0', correctedFilingId: '123' } })
 
     const wrapper = mount(Correction, {
       store,
@@ -285,7 +284,7 @@ describe('Correction - UI', () => {
   it('resumes draft correction properly', async () => {
     // mock "get draft correction" endpoint
     sinonAxiosGet
-      .withArgs('CP1234567/filings/456')
+      .withArgs('businesses/CP1234567/filings/456')
       .returns(new Promise(resolve =>
         resolve({
           data: {
@@ -314,12 +313,12 @@ describe('Correction - UI', () => {
       ))
 
     // mock $route
-    const $route = { params: { id: '456', correctedFilingId: '123' } }
+    const $route = { params: { filingId: '456', correctedFilingId: '123' } }
 
     // create local Vue and mock router
     createLocalVue().use(VueRouter)
     const router = mockRouter.mock()
-    router.push({ name: 'correction', params: { id: '0', correctedFilingId: '123' } })
+    router.push({ name: 'correction', params: { filingId: '0', correctedFilingId: '123' } })
 
     const wrapper = mount(Correction, {
       store,
