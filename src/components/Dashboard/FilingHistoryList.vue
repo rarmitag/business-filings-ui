@@ -71,11 +71,11 @@
                       <v-list-item-icon>
                         <v-icon>mdi-file-document-edit-outline</v-icon>
                       </v-list-item-icon>
+
                       <v-list-item-title
                         class="file-correction-item"
                         @click="correctThisItem(filing)"
-                      >
-                        File a Correction
+                      >                        File a Correction
                       </v-list-item-title>
                     </v-list-item>
 
@@ -456,7 +456,7 @@ export default {
         }
       }
     },
-    /*
+
     correctThisItem (item) {
       if (!item || !item.type) return // safety check
       switch (item.type) {
@@ -477,11 +477,12 @@ export default {
             params: { correctedFilingId: item.filingId } })
           break
         case FilingTypes.CHANGE_OF_ADDRESS:
+          alert('Address Correction')
           // FUTURE:
           // this.$router.push({ name: STANDALONE_ADDRESSES,
           //   params: { filingId: item.filingId, isCorrection: true } })
           // FOR NOW:
-          this.$router.push({ name: CORRECTION,
+          this.$router.push({ name: ADDRESS_CORRECTION,
             params: { correctedFilingId: item.filingId } })
           break
         case FilingTypes.CORRECTION:
@@ -497,7 +498,7 @@ export default {
           break
       }
     },
-    */
+
     async downloadDocument (filingDocument) {
       this.loadingDocument = true
       await this.downloadOneDocument(filingDocument)
