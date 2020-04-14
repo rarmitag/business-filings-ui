@@ -2,8 +2,9 @@ import { Component, Vue } from 'vue-property-decorator'
 import { mapState } from 'vuex'
 import { AlertMessageIF } from '@/interfaces'
 import { FilingCodes } from '@/enums'
+
 /**
- * Mixin for components to retrieve text/settings from json resource.
+ * Mixin for components to retrieve text/settings from JSON resource.
  */
 @Component({
   computed: {
@@ -16,9 +17,8 @@ export default class ResourceLookupMixin extends Vue {
 
     /**
      * Returns certify message using the configuration lookup object.
-     *
-     * @param entity The entity type of the component.
-     * @return the appropriate message for the certify component for the current filing flow.
+     * @param entity the entity type of the component
+     * @returns the appropriate message for the certify component for the current filing flow
      */
     certifyText (feeCode: string): string {
       if (this.configObject && this.configObject.flows) {
@@ -32,20 +32,15 @@ export default class ResourceLookupMixin extends Vue {
 
     /**
      * Returns the current entity's full display name.
-     *
-     * @return the entity display name (if the configuration has been loaded).
+     * @returns the entity display name (if the configuration has been loaded)
      */
-    displayName () {
-      if (this.configObject && this.configObject.displayName) {
-        return this.configObject.displayName
-      }
-      return ''
+    displayName (): string {
+      return this.configObject?.displayName || ''
     }
 
     /**
      * Validates directors on edit/cease and return any warning messages.
-     *
-     * @return the compliance message or null (if the configuration has been loaded).
+     * @returns the compliance message or null (if the configuration has been loaded)
      */
     directorWarning (directors: Array<any>): AlertMessageIF {
       // FUTURE: Too much code for this. Can be condensed and made more reusable.

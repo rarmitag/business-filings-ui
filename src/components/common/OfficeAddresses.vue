@@ -92,7 +92,7 @@
           </div>
         </li>
 
-        <div v-if="entityFilter(EntityTypes.BCOMP)">
+        <div v-if="isBComp()">
           <div class="address-edit-header" v-if="showAddressForm">
             <label class="address-edit-title">Records Office</label>
             <v-checkbox
@@ -206,16 +206,14 @@ import { officeAddressSchema } from '@/schemas'
 import BaseAddress from 'sbc-common-components/src/components/BaseAddress.vue'
 
 // Mixins
-import { CommonMixin, EntityFilterMixin } from '@/mixins'
+import { CommonMixin } from '@/mixins'
 
 // Interfaces
 import { BaseAddressObjIF, BcorpAddressIf, AddressIF } from '@/interfaces'
 
-// Constants
-import { ADDRESSCHANGED } from '@/constants'
-
-// Enums
+// Enums and Constants
 import { EntityTypes } from '@/enums'
+import { ADDRESSCHANGED } from '@/constants'
 
 @Component({
   components: {
@@ -223,7 +221,7 @@ import { EntityTypes } from '@/enums'
     'mailing-address': BaseAddress
   }
 })
-export default class OfficeAddresses extends Mixins(CommonMixin, EntityFilterMixin) {
+export default class OfficeAddresses extends Mixins(CommonMixin) {
   /**
    * Indicates whether this component should be enabled or not.
    */
@@ -289,10 +287,10 @@ export default class OfficeAddresses extends Mixins(CommonMixin, EntityFilterMix
   private inheritRegisteredAddress: boolean = this.isSame(this.registeredAddress, this.recordsAddress)
 
   // The Address schema containing Vuelidate rules.
-  private addressSchema: {} = officeAddressSchema
+  private addressSchema = officeAddressSchema
 
-  // Entity Enum
-  readonly EntityTypes: {} = EntityTypes
+  // Enum definition for use in template.
+  readonly EntityTypes = EntityTypes
 
   /**
    * Called when component is created.

@@ -87,7 +87,7 @@
                     />
                   </div>
 
-                  <div class="form__row" v-if="entityFilter(EntityTypes.BCOMP)">
+                  <div class="form__row" v-if="isBComp()">
                     <v-checkbox
                       class="inherit-checkbox"
                       label="Mailing Address same as Delivery Address"
@@ -181,7 +181,7 @@
         <v-subheader v-if="this.directors.length && !directorEditInProgress" class="director-header">
           <span>Names</span>
           <span>Delivery Address</span>
-          <span v-if="entityFilter(EntityTypes.BCOMP)">Mailing Address</span>
+          <span v-if="isBComp()">Mailing Address</span>
           <span>Appointed/Elected</span>
         </v-subheader>
         <li class="director-list-item"
@@ -240,7 +240,7 @@
                   <div class="address">
                     <base-address :address="director.deliveryAddress" />
                   </div>
-                  <div class="address same-address" v-if="entityFilter(EntityTypes.BCOMP)">
+                  <div class="address same-address" v-if="isBComp()">
                     <span v-if="isSame(director.deliveryAddress, director.mailingAddress)">
                       Same as Delivery Address
                     </span>
@@ -368,9 +368,7 @@
                     :key="activeIndex"
                   />
 
-                  <div class="form__row" v-if="entityFilter(EntityTypes.BCOMP)"
-                   v-show="editFormShowHide.showAddress"
-                  >
+                  <div class="form__row" v-if="isBComp()" v-show="editFormShowHide.showAddress">
                     <v-checkbox
                       class="inherit-checkbox"
                       label="Mailing Address same as Delivery Address"
@@ -458,6 +456,14 @@
                     >
                       <span>Remove</span>
                     </v-btn>
+                    <v-btn color="error"
+                     class="reset-edit-btn"
+                     v-show="!isNew(director) && editFormShowHide.showName"
+                     @click="restoreDirName(director.id, true)"
+                     :disabled="!isNameChanged(director)"
+                    >
+                      <span>Reset</span>
+                    </v-btn>
                     <v-btn color="primary"
                       class="form-primary-btn done-edit-btn"
                       @click="saveEditDirector(index, director.id)"
@@ -509,12 +515,10 @@ import BaseAddress from 'sbc-common-components/src/components/BaseAddress.vue'
 import { WarningPopover } from '@/components/dialogs'
 
 // Mixins
-import { DateMixin, EntityFilterMixin, CommonMixin, DirectorMixin, ResourceLookupMixin } from '@/mixins'
+import { DateMixin, CommonMixin, DirectorMixin, ResourceLookupMixin } from '@/mixins'
 
-// Enums
+// Enums and Constants
 import { EntityTypes, FilingStatus } from '@/enums'
-
-// Constants
 import { CEASED, NAMECHANGED, ADDRESSCHANGED, APPOINTED } from '@/constants'
 
 // Interfaces
@@ -532,8 +536,7 @@ import { FormType, BaseAddressType, AlertMessageIF } from '@/interfaces'
     ...mapGetters(['lastCODFilingDate'])
   }
 })
-export default class Directors extends Mixins(DateMixin, CommonMixin,
-  DirectorMixin, EntityFilterMixin, ResourceLookupMixin) {
+export default class Directors extends Mixins(DateMixin, CommonMixin, DirectorMixin, ResourceLookupMixin) {
   // To fix "property X does not exist on type Y" errors, annotate types for referenced components.
   // ref: https://github.com/vuejs/vetur/issues/1414
   $refs!: {
@@ -563,6 +566,7 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
   // Local properties.
   private directors = []
   private directorsOriginal = []
+  private directorPreEdit = null
   private showNewDirectorForm = false
   private draftDate = null
   private showPopup = false
@@ -610,8 +614,8 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
   // State of the form checkbox for determining whether or not the mailing address is the same as the delivery address.
   private inheritDeliveryAddress: boolean = false
 
-  // EntityTypes Enum
-  readonly EntityTypes: {} = EntityTypes
+  // Enum definition for use in template.
+  readonly EntityTypes = EntityTypes
 
   // The Address schema containing Vuelidate rules.
   // NB: This should match the subject JSON schema.
@@ -833,7 +837,7 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
 
   /**
    * Function called externally to set the draft date.
-   * TODO: change this to a prop
+   * FUTURE: change this to a prop
    * @param date The draft date to set.
    */
   public setDraftDate (date): void {
@@ -846,11 +850,11 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
 
   /**
    * Function called internally and externally to fetch the list of directors.
-   * TODO: change this to a prop?
+   * FUTURE: change this to a prop?
    */
   public getDirectors (getOrigOnly: Boolean = false): void {
     if (this.entityIncNo && this.asOfDate) {
-      var url = this.entityIncNo + '/directors?date=' + this.asOfDate
+      var url = `businesses/${this.entityIncNo}/directors?date=${this.asOfDate}`
       axios.get(url)
         .then(response => {
           if (response && response.data && response.data.directors) {
@@ -1000,7 +1004,7 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
     }
 
     // Add the mailing address property if the entity is a BCOMP
-    if (this.entityFilter(EntityTypes.BCOMP)) {
+    if (this.isBComp()) {
       newDirector = { ...newDirector, mailingAddress: { ...this.inProgressMailAddress } }
     }
 
@@ -1068,6 +1072,7 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
    * @param index The index of the director to edit.
    */
   private editDirectorName (index): void {
+    this.directorPreEdit = { ...this.directors[index].officer }
     this.editFormShowHide = {
       showAddress: false,
       showName: true,
@@ -1082,6 +1087,7 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
    * @param index The index of the director to edit.
    */
   private editDirectorAddress (index): void {
+    this.directorPreEdit = null
     this.editFormShowHide = {
       showAddress: true,
       showName: false,
@@ -1156,8 +1162,7 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
    * @param id Id of the director being edited.
    */
   private cancelEditDirector (id = null): void {
-    this.restoreDirName(id - 1)
-
+    if (id) this.restoreDirName(id, false)
     this.activeIndex = -1
     this.directorEditInProgress = false
 
@@ -1171,17 +1176,26 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
 
   /**
    * Restores the directors name after cancelling a name change.
-   * @param index Index value of the director currently being edited
+   * @param id Id value of the director currently being edited.
+   * @param isRestore Boolean indicating a hard or soft name reset.
    */
-  private restoreDirName (index: number): void {
-    if (index >= 0) {
-      const director = this.directors[index]
+  private restoreDirName (id: number, isRestore: boolean): void {
+    const index = this.directors.findIndex(director => director.id === id)
+    const director = this.directors[index]
+
+    if (isRestore && id >= 0) {
       this.removeAction(director, NAMECHANGED)
 
       if (director.officer.prevFirstName && director.officer.prevLastName) {
         director.officer.firstName = director.officer.prevFirstName
         director.officer.middleInitial = director.officer.prevMiddleInitial
         director.officer.lastName = director.officer.prevLastName
+      }
+      this.cancelEditDirector()
+    } else {
+      if (this.directorPreEdit && !this.isNew(director)) {
+        director.officer = { ...this.directorPreEdit }
+        this.directorPreEdit = null
       }
     }
   }
@@ -1205,7 +1219,7 @@ export default class Directors extends Mixins(DateMixin, CommonMixin,
 
   /**
    * Function called internally and externally to set all directors.
-   * TODO: change this to a prop
+   * FUTURE: change this to a prop
    * @param directors The list of directors to set.
    */
   setAllDirectors (directors): void {

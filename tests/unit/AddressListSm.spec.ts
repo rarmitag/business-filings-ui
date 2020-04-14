@@ -2,15 +2,15 @@ import Vue from 'vue'
 import Vuetify from 'vuetify'
 import Vuelidate from 'vuelidate'
 
-import store from '@/store/store'
+import { getVuexStore } from '@/store'
 import AddressListSm from '@/components/Dashboard/AddressListSm.vue'
 import { mount } from '@vue/test-utils'
-import { EntityTypes } from '@/enums'
 
 Vue.use(Vuetify)
 Vue.use(Vuelidate)
 
 const vuetify = new Vuetify({})
+const store = getVuexStore()
 
 describe('AddressListSm', () => {
   it('handles empty data', done => {
@@ -32,7 +32,7 @@ describe('AddressListSm', () => {
 
   it('displays all addresses when a COOP', done => {
     // Init Store
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
     store.state.registeredAddress = {
       'deliveryAddress':
         {
@@ -75,7 +75,7 @@ describe('AddressListSm', () => {
 
   it('displays "same as above" when a COOP', done => {
     // Init Store
-    store.state.entityType = EntityTypes.COOP
+    store.state.entityType = 'CP'
     store.state.registeredAddress = {
       'deliveryAddress':
         {
@@ -118,7 +118,7 @@ describe('AddressListSm', () => {
 
   it('displays all addresses when a BCOMP', async done => {
     // Init Store
-    store.state.entityType = EntityTypes.BCOMP
+    store.state.entityType = 'BC'
     store.state.registeredAddress = {
       'deliveryAddress':
         {
@@ -190,7 +190,7 @@ describe('AddressListSm', () => {
 
   it('displays "same as above" when a BCOMP', async done => {
     // Init Store
-    store.state.entityType = EntityTypes.BCOMP
+    store.state.entityType = 'BC'
     store.state.registeredAddress = {
       'deliveryAddress':
         {
