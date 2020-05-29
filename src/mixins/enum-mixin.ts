@@ -68,6 +68,7 @@ export default class EnumMixin extends Vue {
     if (!type) return '' // safety check
     switch (type) {
       case FilingTypes.ANNUAL_REPORT: return FilingNames.ANNUAL_REPORT + (agmYear ? ` (${agmYear})` : '')
+      case FilingTypes.ADDRESS_CORRECTION: return FilingNames.ADDRESS_CORRECTION
       case FilingTypes.CHANGE_OF_DIRECTORS: return FilingNames.DIRECTOR_CHANGE
       case FilingTypes.CHANGE_OF_ADDRESS: return FilingNames.ADDRESS_CHANGE
       case FilingTypes.CHANGE_OF_NAME: return FilingNames.LEGAL_NAME_CHANGE
