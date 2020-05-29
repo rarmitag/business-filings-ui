@@ -341,7 +341,7 @@ import { CommonMixin, DateMixin, EnumMixin, FilingMixin } from '@/mixins'
 
 // Enums and Constants
 import { EntityTypes, FilingStatus, FilingTypes } from '@/enums'
-import { ANNUAL_REPORT, CORRECTION, STANDALONE_ADDRESSES, STANDALONE_DIRECTORS } from '@/constants'
+import { ANNUAL_REPORT, ADDRESS_CORRECTION, CORRECTION, STANDALONE_ADDRESSES, STANDALONE_DIRECTORS } from '@/constants'
 
 export default {
   name: 'TodoList',
@@ -504,6 +504,9 @@ export default {
           case FilingTypes.CORRECTION:
             this.loadCorrection(task)
             break
+          case FilingTypes.ADDRESS_CORRECTION:
+            this.loadAddressCorrection(task)
+            break
           case FilingTypes.INCORPORATION_APPLICATION:
             this.loadIncorporationApplication(task)
             break
@@ -609,6 +612,29 @@ export default {
       }
     },
 
+    loadAddressCorrection (task) {
+      const filing = task.task.filing
+      if (filing && filing.header && filing.correction) {
+        this.taskItems.push({
+          type: FilingTypes.ADDRESS_CORRECTION,
+          id: filing.header.filingId,
+          filingDate: filing.correction.correctedFilingDate,
+          corrFilingId: filing.correction.correctedFilingId,
+          correctedFilingType: this.filingTypeToName(filing.correction.correctedFilingType),
+          title: `${this.isPriority(filing.header.priority)} -
+            ${this.filingTypeToName(filing.correction.correctedFilingType)}`,
+          draftTitle: `${this.filingTypeToName(filing.correction.correctedFilingType)}`,
+          status: filing.header.status,
+          enabled: Boolean(task.enabled),
+          order: task.order,
+          comments: this.flattenAndSortComments(filing.header.comments)
+        })
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('ERROR - invalid filing or header or changeOfAddress in task =', task)
+      }
+    },
+
     loadIncorporationApplication (task) {
       const filing = task.task.filing
       if (filing && filing.header && filing.incorporationApplication) {
@@ -673,6 +699,13 @@ export default {
           // resume this Correction Filing
           this.setCurrentFilingStatus(FilingStatus.DRAFT)
           this.$router.push({ name: CORRECTION,
+            params: { filingId: task.id, correctedFilingId: task.corrFilingId }
+          })
+          break
+        case FilingTypes.ADDRESS_CORRECTION:
+          // resume this Correction Filing
+          this.setCurrentFilingStatus(FilingStatus.DRAFT)
+          this.$router.push({ name: ADDRESS_CORRECTION,
             params: { filingId: task.id, correctedFilingId: task.corrFilingId }
           })
           break
@@ -851,7 +884,12 @@ export default {
 
     /** Returns True if task type is Correction. */
     isTypeCorrection (task: any): boolean {
+      alert(task.header.name)
       return (task.type === FilingTypes.CORRECTION)
+    },
+    // && task.header.name !== 'addressCorrection'
+    isTypeAddressCorrection (task: any): boolean {
+      return (task.type === FilingTypes.ADDRESS_CORRECTION && task.header.name === 'addressCorrection')
     },
 
     /** Returns True if task type is Annual Report. */
