@@ -22,31 +22,32 @@
                 </h2>
               </header>
               <todo-list
-                @todo-count="todoCount = $event"
-                @has-blocker-filing="hasBlockerFiling = $event"
-                @todo-filings="todoListFilings = $event"
                 :inProcessFiling="inProcessFiling"
                 :coaPending="coaPending"
-                :hasBlockerFiling="hasBlockerFiling"
+                :disableChanges="disableChanges"
+                @todo-count="todoCount = $event"
+                @todo-filings="todoListFilings = $event"
+                @has-blocker-task="hasBlockerTask = $event"
               />
             </section>
 
-            <section v-show="!nrNumber">
+            <section>
               <header>
                 <h2 class="mb-3" data-test-id="dashboard-filing-history-subtitle">
                   <span>Recent Filing History</span>&nbsp;<span class="gray6">({{filedCount}})</span>
                 </h2>
               </header>
               <filing-history-list
-                :hasBlockerFiling="hasBlockerFiling"
+                :disableChanges="disableChanges"
                 @filed-count="filedCount = $event"
                 @filings-list="historyFilings = $event"
+                @has-blocker-filing="hasBlockerFiling = $event"
               />
             </section>
           </v-col>
 
           <v-col cols="12" md="3" style="position: relative">
-            <section v-show="!nrNumber">
+            <section>
               <header class="aside-header mb-3">
                 <h2 data-test-id="dashboard-addresses-subtitle">Office Addresses</h2>
                 <v-scale-transition>
@@ -60,14 +61,14 @@
                         <span>Pending</span>
                       </v-chip>
                     </template>
-                    <span>The updated office addresses will be legally effective on {{ effectiveDate }},
-                      12:01 AM(Pacific Time). No other filings are allowed until then.</span>
+                    <span>The updated office addresses will be legally effective on {{ coaEffectiveDate }},
+                      12:01 AM (Pacific Time). No other filings are allowed until then.</span>
                   </v-tooltip>
                 </v-scale-transition>
                 <v-btn text small color="primary"
                   id="standalone-addresses-button"
                   class="change-btn"
-                  :disabled="hasBlockerFiling"
+                  :disabled="disableChanges"
                   @click.native.stop="proceedCoa()"
                 >
                   <v-icon small>mdi-pencil</v-icon>
@@ -77,17 +78,19 @@
               <v-card flat>
                 <address-list-sm
                   :coaPending="coaPending"
+                  :showCompleteYourFilingMessage="isIncorpAppTask"
+                  :showGrayedOut="isIncorpAppFiling"
                 />
               </v-card>
             </section>
 
-            <section v-show="!nrNumber">
+            <section>
               <header class="aside-header mb-3">
                 <h2 data-test-id="dashboard-directors-subtitle">Current Directors</h2>
                 <v-btn text small color="primary"
                   id="standalone-directors-button"
                   class="change-btn"
-                  :disabled="hasBlockerFiling"
+                  :disabled="disableChanges"
                   @click.native.stop="goToStandaloneDirectors()"
                 >
                   <v-icon small>mdi-pencil</v-icon>
@@ -95,7 +98,10 @@
                 </v-btn>
               </header>
               <v-card flat>
-                <director-list-sm />
+                <director-list-sm
+                  :showCompleteYourFilingMessage="isIncorpAppTask"
+                  :showGrayedOut="isIncorpAppFiling"
+                />
               </v-card>
             </section>
           </v-col>
@@ -110,9 +116,6 @@
 import axios from '@/axios-auth'
 import { mapState, mapActions } from 'vuex'
 
-// Mixins
-import { withFlags } from 'ld-vue'
-
 // Components
 import TodoList from '@/components/Dashboard/TodoList.vue'
 import FilingHistoryList from '@/components/Dashboard/FilingHistoryList.vue'
@@ -126,13 +129,13 @@ import { CommonMixin } from '@/mixins'
 import { CoaWarningDialog } from '@/components/dialogs'
 
 // Enums and Constants
-import { EntityTypes, FilingNames, FilingStatus } from '@/enums'
+import { EntityStatus, FilingStatus } from '@/enums'
 import { STANDALONE_ADDRESSES, STANDALONE_DIRECTORS } from '@/constants'
 
 export default {
   name: 'Dashboard',
 
-  mixins: [withFlags, CommonMixin],
+  mixins: [CommonMixin],
 
   components: {
     TodoList,
@@ -145,28 +148,37 @@ export default {
   data () {
     return {
       todoCount: 0,
+      hasBlockerTask: false,
       hasBlockerFiling: false,
+      hasPendingFiling: false,
       filedCount: 0,
       historyFilings: [],
       todoListFilings: [],
-      refreshTimer: null,
+      refreshTimer: null as number,
       checkFilingStatusCount: 0,
-      inProcessFiling: null,
+      inProcessFiling: null as any,
       coaPending: false,
-      effectiveDate: null,
-      coaWarningDialog: false,
-
-      // Filing Status Enum
-      FilingStatus
+      coaEffectiveDate: null as string,
+      coaWarningDialog: false
     }
   },
 
   computed: {
-    ...mapState(['entityIncNo']),
+    ...mapState(['entityIncNo', 'entityStatus']),
 
-    /** The NR Number string. */
-    nrNumber (): string {
-      return sessionStorage.getItem('NR_NUMBER')
+    /** Whether this is a Draft Incorporation Application. */
+    isIncorpAppTask (): boolean {
+      return (this.entityStatus === EntityStatus.DRAFT_INCORP_APP)
+    },
+
+    /** Whether this is a Paid Incorporation Application. */
+    isIncorpAppFiling (): boolean {
+      return (this.entityStatus === EntityStatus.PAID_INCORP_APP)
+    },
+
+    /** Whether to block a new filing because another item has to be finished first. */
+    disableChanges (): boolean {
+      return (this.hasBlockerTask || this.hasBlockerFiling || this.hasPendingFiling)
     }
   },
 
@@ -246,21 +258,19 @@ export default {
     },
 
     /**
-     * Searches the filings history for a 'paid' status.
-     * Paid status indicates a filing that is paid but future effective.
-     * Change the state of the UI when a filing is future effective.
-     * Currently only BCOMPs change of addresses filing are future effective.
-     *
-     * @param filings The array of filings in history
+     * Searches the filings history for a "pending" state, ie, paid (not yet completed).
+     * Used to block new filings while there's a pending one.
      */
-    checkPendingFilings (filings: Array<any>) {
-      if (!filings || !filings.length) return // safety check
+    checkPendingFilings (): void {
+      if (!this.historyFilings?.length) return // safety check
 
-      filings.some(filing => {
-        if (filing.name === FilingNames.ADDRESS_CHANGE && filing.status === FilingStatus.PAID) {
-          this.effectiveDate = filing.filingEffectiveDate
-          this.coaPending = true
-          this.hasBlockerFiling = true
+      const foundPaid = this.historyFilings.some(filing => {
+        if (filing.isPaid) {
+          if (filing.isBcompCoaFutureEffective) {
+            this.coaPending = true
+            this.coaEffectiveDate = filing.effectiveDate
+          }
+          this.hasPendingFiling = true
           return true
         }
         return false
@@ -282,17 +292,11 @@ export default {
     }
   },
 
-  mounted (): void {
-    // Launch Darkly flag usage example:
-    // console.log('coopsVersion =', this.flags.coopsVersion)
-  },
-
   watch: {
     historyFilings () {
-      // check if a filing has a paid but pending state ( Currently BCOMPS )
-      if (this.isBComp()) {
-        this.checkPendingFilings(this.historyFilings)
-      }
+      // check if any filing has a pending state
+      this.checkPendingFilings()
+
       // check whether to reload the dashboard with updated data
       this.checkToReloadDashboard()
     },
@@ -324,12 +328,6 @@ section header {
   }
 }
 
-.pending-chip {
-  max-width: 3.75rem;
-  height: 1rem;
-  overflow: visible;
-  font-size: 8px;
-}
 .change-btn {
   padding: 0 6px 0 6px!important;
 }

@@ -9,7 +9,7 @@ import axios from '@/axios-auth'
 import { getVuexStore } from '@/store'
 import mockRouter from './mockRouter'
 import flushPromises from 'flush-promises'
-import { BAD_REQUEST } from 'http-status-codes'
+import { BAD_REQUEST, PAYMENT_REQUIRED } from 'http-status-codes'
 import { shallowMount, createLocalVue, mount, Wrapper } from '@vue/test-utils'
 
 // Components
@@ -924,8 +924,8 @@ describe('AnnualReport - Part 3 - Submitting', () => {
     expect(button.attributes('disabled')).toBeUndefined()
 
     // click the File & Pay button
-    button.trigger('click')
-    await flushPromises()
+    // button.trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickFilePay()
 
@@ -996,8 +996,8 @@ describe('AnnualReport - Part 3 - Submitting', () => {
     expect(button.attributes('disabled')).toBeUndefined()
 
     // click the File & Pay button
-    button.trigger('click')
-    await flushPromises()
+    // button.trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickFilePay()
 
@@ -1227,7 +1227,8 @@ describe('AnnualReport - Part 4 - Saving', () => {
     }
 
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1256,7 +1257,8 @@ describe('AnnualReport - Part 4 - Saving', () => {
     }
 
     // click the Save & Resume Later button
-    wrapper.find('#ar-save-resume-btn').trigger('click')
+    // wrapper.find('#ar-save-resume-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSaveResume()
 
@@ -1273,7 +1275,8 @@ describe('AnnualReport - Part 4 - Saving', () => {
     vm.certifyFormValid = true
 
     // click the Cancel button
-    wrapper.find('#ar-cancel-btn').trigger('click')
+    // wrapper.find('#ar-cancel-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.$router.push({ name: 'dashboard' })
 
@@ -1415,7 +1418,8 @@ describe('AnnualReport - Part 5 - Data', () => {
 
   it('includes Directors, Office Mailing Address, and Office Delivery Address in AR filing data', async () => {
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1435,7 +1439,8 @@ describe('AnnualReport - Part 5 - Data', () => {
 
   it('includes unchanged directors in AR filing data', async () => {
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1452,7 +1457,8 @@ describe('AnnualReport - Part 5 - Data', () => {
 
   it('includes appointed directors in AR filing data', async () => {
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1469,7 +1475,8 @@ describe('AnnualReport - Part 5 - Data', () => {
 
   it('does NOT include ceased directors in AR filing data', async () => {
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1486,7 +1493,8 @@ describe('AnnualReport - Part 5 - Data', () => {
 
   it('includes certification data in the header', async () => {
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1508,7 +1516,8 @@ describe('AnnualReport - Part 5 - Data', () => {
     store.state.currentDate = '2019-03-03'
 
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1530,7 +1539,8 @@ describe('AnnualReport - Part 5 - Data', () => {
     vm.didNotHoldAgm = true
 
     // click the Save button
-    wrapper.find('#ar-save-btn').trigger('click')
+    // wrapper.find('#ar-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1723,6 +1733,7 @@ describe('AnnualReport - Part 5B - Data (BCOMP)', () => {
     // - the first index (0) is to get the first call, where there could be many calls to the stubbed function
     // - the second index (1) is to get the second param - data - where the call is axios.post(url, data)
     const payload = spy.args[0][1]
+
     // basic tests to pass ensuring structure of payload is as expected
     expect(payload.filing).toBeDefined()
     expect(payload.filing.annualReport).toBeDefined()
@@ -1951,11 +1962,11 @@ describe('AnnualReport - Part 6 - Error/Warning Dialogs', () => {
       }
     }
 
-    // click the Save button
-    wrapper.find('#ar-file-pay-btn').trigger('click')
+    // click the File & Pay button
+    // wrapper.find('#ar-file-pay-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickFilePay()
-    await flushPromises()
 
     // verify error dialog
     expect(vm.saveErrorDialog).toBe(true)
@@ -1990,11 +2001,11 @@ describe('AnnualReport - Part 6 - Error/Warning Dialogs', () => {
     // set the filingId
     vm.filingId = 123
 
-    // click the Save button
-    wrapper.find('#ar-file-pay-btn').trigger('click')
+    // click the File & Pay button
+    // wrapper.find('#ar-file-pay-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickFilePay()
-    await flushPromises()
 
     // verify error dialog
     expect(vm.saveErrorDialog).toBe(true)
@@ -2092,7 +2103,7 @@ describe('AnnualReport - Part 7 - Concurrent Saves', () => {
       }
     }
 
-    // click the Save button
+    // click the File & Pay button
     wrapper.find('#ar-file-pay-btn').trigger('click')
     await flushPromises()
 
@@ -2101,5 +2112,153 @@ describe('AnnualReport - Part 7 - Concurrent Saves', () => {
     expect(vm.saveErrors.length).toBe(1)
     expect(vm.saveErrors[0].error)
       .toBe('Another draft filing already exists. Please complete it before creating a new filing.')
+  })
+})
+
+describe('AnnualReport - BCOL error dialog on save', () => {
+  let wrapper: Wrapper<Vue>
+  let vm: any
+
+  beforeEach(() => {
+    // init store
+    store.state.businessId = 'CP0001191'
+    store.state.entityIncNo = 'CP0001191'
+    store.state.entityType = 'CP'
+    store.state.entityName = 'Legal Name - CP0001191'
+    store.state.ARFilingYear = 2017
+    store.state.currentFilingStatus = 'NEW'
+
+    // mock "file post" endpoint, with a BCOL error response
+    const p1 = Promise.reject({
+      response: {
+        status: PAYMENT_REQUIRED,
+        data: {
+          errors: [
+            {
+              payment_error_type: 'BCOL_ERROR'
+            }
+          ],
+          filing: {
+            annualReport: {
+              annualGeneralMeetingDate: '2018-07-15'
+            },
+            business: {
+              cacheId: 1,
+              foundingDate: '2007-04-08',
+              identifier: 'CP0001191',
+              lastLedgerTimestamp: '2019-04-15T20:05:49.068272+00:00',
+              legalName: 'Legal Name - CP0001191'
+            },
+            header: {
+              name: 'annualReport',
+              date: '2017-06-06',
+              submitter: 'cp0001191',
+              status: 'DRAFT',
+              certifiedBy: 'Full Name',
+              email: 'no_one@never.get',
+              filingId: 123
+            }
+          }
+        }
+      }
+    })
+
+    p1.catch(() => {}) // pre-empt "unhandled promise rejection" warning
+
+    sinon
+      .stub(axios, 'post')
+      .withArgs('businesses/CP0001191/filings')
+      .returns(p1)
+
+    const localVue = createLocalVue()
+    localVue.use(VueRouter)
+    const router = mockRouter.mock()
+    router.push({ name: 'annual-report', params: { filingId: '0' } }) // new filing id
+
+    wrapper = mount(AnnualReport, {
+      store,
+      localVue,
+      router,
+      stubs: {
+        ArDate: true,
+        AgmDate: true,
+        OfficeAddresses: true,
+        Directors: true,
+        Certify: true,
+        StaffPayment: true,
+        Affix: true,
+        SbcFeeSummary: true,
+        ConfirmDialog: true,
+        PaymentErrorDialog: true,
+        ResumeErrorDialog: true,
+        SaveErrorDialog: true,
+        BcolErrorDialog: true
+      },
+      vuetify
+    })
+    vm = wrapper.vm
+  })
+
+  afterEach(() => {
+    sinon.restore()
+    wrapper.destroy()
+  })
+
+  it('Attempt to file and pay with a BCOL error', async () => {
+    // set necessary session variables
+    sessionStorage.setItem('BASE_URL', `${process.env.VUE_APP_PATH}/`)
+    sessionStorage.setItem('PAY_API_URL', '')
+    sessionStorage.setItem('AUTH_URL', 'auth/')
+    const get = sinon.stub(axios, 'get')
+
+    get.withArgs('businesses/CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
+
+    // make sure form is validated
+    vm.staffPaymentFormValid = true
+    vm.agmDateValid = true
+    vm.addressesFormValid = true
+    vm.directorFormValid = true
+    vm.certifyFormValid = true
+    vm.directorEditInProgress = false
+    store.state.filingData = [{ filingTypeCode: 'OTANN', entityType: 'CP' }] // dummy data
+
+    // stub address data
+    vm.addresses = {
+      registeredOffice: {
+        deliveryAddress: {},
+        mailingAddress: {}
+      }
+    }
+
+    // make sure a fee is required
+    vm.totalFee = 100
+
+    // sanity check
+    expect(vm.bcolObj).toBeNull()
+
+    const button = wrapper.find('#ar-file-pay-btn')
+    expect(button.attributes('disabled')).toBeUndefined()
+
+    // Stub out a response from the Error endpoint in Pay API
+    get.withArgs('codes/errors/BCOL_ERROR')
+      .returns(new Promise(resolve => resolve({
+        data: {
+          detail: 'An error has occurred',
+          title: 'Error'
+        }
+      })))
+
+    // click the File & Pay button
+    // button.trigger('click')
+    // await flushPromises()
+    // work-around because click trigger isn't working
+    await vm.onClickFilePay()
+
+    // verify an error has been received
+    expect(vm.bcolObj?.detail?.length).toBeGreaterThan(0)
+    expect(vm.bcolObj?.title?.length).toBeGreaterThan(0)
+
+    wrapper.destroy()
   })
 })

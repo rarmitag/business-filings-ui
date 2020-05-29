@@ -1,6 +1,7 @@
 // Libraries
 import { Component, Mixins } from 'vue-property-decorator'
-import { NameRequestStates } from '@/enums'
+import { NameRequestStates, EntityTypes } from '@/enums'
+import { NameRequestIF } from '@/interfaces'
 
 // Mixins
 import { DateMixin } from '@/mixins'
@@ -19,11 +20,15 @@ export default class NamexRequestMixin extends Mixins(DateMixin) {
       nr.state &&
       nr.expirationDate &&
       nr.names?.length > 0 &&
-      nr.nrNum &&
+      // workaround for old or new property name
+      (nr.nrNum || nr.nrNumber) &&
       nr.requestTypeCd)
   }
 
-  /** Returns the Name Request's state. */
+  /**
+   * Returns the Name Request's state.
+   * @param nr the name request response payload
+   */
   getNrState (nr: any): NameRequestStates {
     // Ensure a NR payload is provided.
     if (!nr) {
@@ -34,6 +39,11 @@ export default class NamexRequestMixin extends Mixins(DateMixin) {
     const expireDays = this.daysFromToday(nr.expirationDate)
     if (isNaN(expireDays) || expireDays < 1) {
       return NameRequestStates.EXPIRED
+    }
+
+    // If the NR is awaiting consent, it is not consumable.
+    if (nr.state === NameRequestStates.CONDITIONAL && nr.consentFlag !== 'R') {
+      return NameRequestStates.NEED_CONSENT
     }
 
     // If the NR's root state is not APPROVED, it is not consumable.
@@ -48,12 +58,48 @@ export default class NamexRequestMixin extends Mixins(DateMixin) {
       return NameRequestStates.CONSUMED
     }
 
-    // If the NR is awaiting consent, it is not consumable.
-    if (nr.consentFlag === false) {
-      return NameRequestStates.NEED_CONSENT
-    }
-
     // Otherwise, the NR is consumable.
     return NameRequestStates.APPROVED
+  }
+
+  /**
+   * Parses name request.
+   * @param nr the name request response payload
+   * @param filingId the filing id
+   */
+  parseNameRequest (nr: any, filingId: number): NameRequestIF {
+    const approvedName = nr.names.find(name => name.state === NameRequestStates.APPROVED).name
+    return {
+      // workaround for old or new property name
+      nrNumber: nr.nrNum || nr.nrNumber,
+      // FUTURE: Update entityType to use nr.requestTypeCd when namex supports our entity types
+      entityType: EntityTypes.BCOMP,
+      filingId: filingId,
+      applicant: {
+        // Address Information
+        addressLine1: nr.applicants.addrLine1,
+        addressLine2: nr.applicants.addrLine2,
+        addressLine3: nr.applicants.addrLine3,
+        city: nr.applicants.city,
+        countryTypeCode: nr.applicants.countryTypeCd,
+        postalCode: nr.applicants.postalCd,
+        stateProvinceCode: nr.applicants.stateProvinceCd,
+
+        // Application contact information
+        emailAddress: nr.applicants.emailAddress,
+        phoneNumber: nr.applicants.phoneNumber,
+
+        // Application name information
+        firstName: nr.applicants.firstName,
+        middleName: nr.applicants.middleName,
+        lastName: nr.applicants.lastName
+      },
+      details: {
+        approvedName: approvedName,
+        consentFlag: nr.consentFlag,
+        expirationDate: nr.expirationDate,
+        status: nr.state
+      }
+    }
   }
 }

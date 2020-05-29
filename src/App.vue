@@ -57,9 +57,8 @@
 
 <script lang="ts">
 // Libraries
-import { mapActions } from 'vuex'
+import { mapState, mapActions } from 'vuex'
 import axios from '@/axios-auth'
-import { NOT_FOUND } from 'http-status-codes'
 import TokenService from 'sbc-common-components/src/services/token.services'
 
 // Components
@@ -78,8 +77,9 @@ import { CommonMixin, DirectorMixin, NamexRequestMixin } from '@/mixins'
 import { configJson } from '@/resources'
 
 // Enums and Constants
-import { EntityStatus, FilingStatus, FilingTypes, NameRequestStates } from '@/enums'
+import { EntityStatus, EntityTypes, FilingStatus, FilingTypes, NameRequestStates } from '@/enums'
 import { SIGNIN, SIGNOUT, DASHBOARD } from '@/constants'
+import { SessionStorageKeys } from 'sbc-common-components/src/util/constants'
 
 export default {
   name: 'App',
@@ -95,7 +95,7 @@ export default {
       nameRequestInvalidDialog: false as boolean,
       nameRequestInvalidType: null as NameRequestStates,
       currentDateTimerId: null as number,
-      nameRequest: null as object,
+      nrNumber: null as string,
 
       /**
        * Instance of the token refresh service.
@@ -121,6 +121,8 @@ export default {
   },
 
   computed: {
+    ...mapState(['tasks', 'filings', 'entityType', 'entityStatus']),
+
     /** The Auth API string. */
     authApiUrl (): string {
       return sessionStorage.getItem('AUTH_API_URL')
@@ -131,9 +133,9 @@ export default {
       return sessionStorage.getItem('BUSINESS_ID')
     },
 
-    /** The NR Number string. */
-    nrNumber (): string {
-      return sessionStorage.getItem('NR_NUMBER')
+    /** The Incorporation Application's Temporary Registration Number string. */
+    tempRegNumber (): string {
+      return sessionStorage.getItem('TEMP_REG_NUMBER')
     },
 
     /** True if loading container should be shown. */
@@ -158,7 +160,7 @@ export default {
     /** True if user is authenticated. */
     isAuthenticated (): boolean {
       // FUTURE: also check that token isn't expired!
-      return Boolean(sessionStorage.getItem('KEYCLOAK_TOKEN'))
+      return Boolean(sessionStorage.getItem(SessionStorageKeys.KeyCloakToken))
     },
 
     /** True if Jest is running the code. */
@@ -180,9 +182,9 @@ export default {
     // just let signin page do its thing
     if (!this.isAuthenticated) return
 
-    // if we are already authenticated from another session...
+    // ...otherwise proceed
     await this.startTokenService()
-    this.fetchData()
+    await this.fetchData()
   },
 
   destroyed (): void {
@@ -195,7 +197,7 @@ export default {
       'setBusinessPhoneExtension', 'setCurrentDate', 'setEntityName', 'setEntityType', 'setEntityStatus',
       'setEntityBusinessNo', 'setEntityIncNo', 'setLastPreLoadFilingDate', 'setEntityFoundingDate', 'setLastAgmDate',
       'setNextARDate', 'setTasks', 'setFilings', 'setRegisteredAddress', 'setRecordsAddress', 'setDirectors',
-      'setLastAnnualReportDate', 'setConfigObject']),
+      'setLastAnnualReportDate', 'setConfigObject', 'setNameRequest']),
 
     /** Stores today's date and sets timeout to keep it updated. */
     updateCurrentDate (): void {
@@ -221,14 +223,35 @@ export default {
       // don't start during Jest tests as it messes up the test JWT
       if (this.tokenService || this.isJestRunning) return Promise.resolve()
 
-      console.info('Starting token refresh service...') // eslint-disable-line no-console
-      this.tokenService = new TokenService()
-      await this.tokenService.init()
-      this.tokenService.scheduleRefreshTimer()
+      try {
+        console.info('Starting token refresh service...') // eslint-disable-line no-console
+        this.tokenService = new TokenService()
+        await this.tokenService.init()
+        this.tokenService.scheduleRefreshTimer()
+      } catch (err) {
+        // happens when the refresh token has expired in session storage
+
+        // eslint-disable-next-line no-console
+        console.log('Could not initialize token refresher, err =', err)
+
+        // clear old session variables and reload page to get new tokens
+        this.clearKeycloakSession()
+        location.reload()
+      }
     },
 
-    /** Fetches business data / NR data. */
-    fetchData (): void {
+    /** Clears Keycloak token information from session storage. */
+    clearKeycloakSession () : void {
+      sessionStorage.removeItem(SessionStorageKeys.KeyCloakToken)
+      sessionStorage.removeItem(SessionStorageKeys.KeyCloakIdToken)
+      sessionStorage.removeItem(SessionStorageKeys.KeyCloakRefreshToken)
+      sessionStorage.removeItem(SessionStorageKeys.UserFullName)
+      sessionStorage.removeItem(SessionStorageKeys.UserKcId)
+      sessionStorage.removeItem(SessionStorageKeys.UserAccountType)
+    },
+
+    /** Fetches business data / incorp app data. */
+    async fetchData (): Promise<void> {
       this.dataLoaded = false
 
       try {
@@ -236,75 +259,82 @@ export default {
         const jwt = this.getJWT()
         const keycloakRoles = this.getKeycloakRoles(jwt)
         this.setKeycloakRoles(keycloakRoles)
+
         // safety check
-        if (!this.businessId && !this.nrNumber) throw new Error('Missing Business ID or NR Number')
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(error)
+        if (!this.businessId && !this.tempRegNumber) {
+          throw new Error('Missing Business ID or Temporary Registration Number')
+        }
+
+        // check if current user is authorized
+        const authData = await this.getAuthorizations()
+        this.storeAuthorizations(authData) // throws if no role
+      } catch (err) {
+        console.log(err) // eslint-disable-line no-console
         if (this.businessId) this.businessAuthErrorDialog = true
-        if (this.nrNumber) this.nameRequestAuthErrorDialog = true
+        if (this.tempRegNumber) this.nameRequestAuthErrorDialog = true
         return // do not execute remaining code
       }
 
-      // check if current user is authorized
-      this.getAuthorizations().then(data => {
-        this.storeAuthorizations(data) // throws if no role
-
-        // good so far ... fetch the business data
-        if (this.businessId) {
-          Promise.all([
-            this.getBusinessInfo(),
-            this.getEntityInfo(),
-            this.getTasks(),
-            this.getFilings(),
-            this.getAddresses(),
-            this.getDirectors()
-          ]).then(data => {
-            if (!data || data.length !== 6) throw new Error('Incomplete data')
-            this.storeBusinessInfo(data[0])
-            this.storeEntityInfo(data[1])
-            this.storeTasks(data[2])
-            this.storeFilings(data[3])
-            this.storeAddresses(data[4])
-            this.storeDirectors(data[5])
-            this.dataLoaded = true
-          }).catch(error => {
-            // eslint-disable-next-line no-console
-            console.error(error)
-            this.dashboardUnavailableDialog = true
-          })
+      // is this a business entity?
+      if (this.businessId) {
+        try {
+          await this.fetchBusinessData() // throws on error
+          this.dataLoaded = true
+        } catch (err) {
+          console.log(err) // eslint-disable-line no-console
+          this.dashboardUnavailableDialog = true
         }
+      }
 
-        // good so far ... fetch the NR data
-        if (this.nrNumber) {
-          this.nameRequestInvalidType = null
-          Promise.all([
-            this.getNrData(),
-            this.getTasks(),
-            this.getFilings()
-          ]).then(data => {
-            if (!data || data.length !== 3) throw new Error('Incomplete data')
-            this.storeNrData(data[0])
-            this.storeTasks(data[1])
-            this.storeFilings(data[2])
-            this.dataLoaded = true
-          }).catch(error => {
-            // eslint-disable-next-line no-console
-            console.error(error)
-            this.nameRequestInvalidDialog = true
-          })
+      // is this a draft incorp app entity?
+      if (this.tempRegNumber) {
+        try {
+          await this.fetchIncorpAppData() // throws on error
+          this.dataLoaded = true
+        } catch (err) {
+          console.log(err) // eslint-disable-line no-console
+          this.nameRequestInvalidDialog = true
         }
-      }).catch(error => {
-        // eslint-disable-next-line no-console
-        console.error(error)
-        if (this.businessId) this.businessAuthErrorDialog = true
-        if (this.nrNumber) this.nameRequestAuthErrorDialog = true
-      })
+      }
+    },
+
+    /** Fetches and stores the business data. */
+    async fetchBusinessData (): Promise<void> {
+      const data = await Promise.all([
+        this.getBusinessInfo(),
+        this.getEntityInfo(),
+        this.getTasks(),
+        this.getFilings(),
+        this.getAddresses(),
+        this.getDirectors()
+      ])
+
+      if (!data || data.length !== 6) throw new Error('Incomplete business data')
+
+      this.storeBusinessInfo(data[0])
+      this.storeEntityInfo(data[1])
+      this.storeTasks(data[2])
+      this.storeFilings(data[3])
+      this.storeAddresses(data[4])
+      this.storeDirectors(data[5])
+    },
+
+    /** Fetches and stores the incorp app data. */
+    async fetchIncorpAppData (): Promise<void> {
+      this.nameRequestInvalidType = null // reset for new fetches
+
+      const iaData = await this.getIncorpApp()
+      this.storeIncorpApp(iaData)
+
+      if (this.nrNumber) {
+        const nrData = await this.getNameRequest()
+        this.storeNrData(nrData)
+      }
     },
 
     /** Gets Keycloak JWT and parses it. */
     getJWT (): any {
-      const token = sessionStorage.getItem('KEYCLOAK_TOKEN')
+      const token = sessionStorage.getItem(SessionStorageKeys.KeyCloakToken)
       if (token) {
         return this.parseToken(token)
       }
@@ -319,8 +349,8 @@ export default {
           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
         }).join(''))
         return JSON.parse(base64)
-      } catch (error) {
-        throw new Error('Error parsing token - ' + error)
+      } catch (err) {
+        throw new Error('Error parsing token - ' + err)
       }
     },
 
@@ -335,7 +365,7 @@ export default {
 
     /** Gets authorizations from Auth API. */
     getAuthorizations (): Promise<any> {
-      const id = this.businessId || this.nrNumber
+      const id = this.businessId || this.tempRegNumber
       const url = id + '/authorizations'
       const config = {
         baseURL: this.authApiUrl + 'entities/'
@@ -418,108 +448,136 @@ export default {
       }
     },
 
+    /** Gets the Incorp App filing from Legal API. */
+    getIncorpApp (): Promise<any> {
+      const url = `businesses/${this.tempRegNumber}/filings`
+      return axios.get(url)
+        // workaround because data is at "response.data.data"
+        .then(response => Promise.resolve(response.data))
+    },
+
+    storeIncorpApp (data: any) : void {
+      const filing = data?.filing
+
+      if (!filing?.business || !filing?.header) {
+        throw new Error('Invalid incorporation application filing')
+      }
+
+      // verify that this is the correct entity type
+      if (filing.business.legalType !== EntityTypes.BCOMP) {
+        throw new Error('Invalid business legal type')
+      }
+
+      // verify that this is the correct filing type
+      if (filing.header.name !== FilingTypes.INCORPORATION_APPLICATION) {
+        throw new Error('Invalid incorporation application name')
+      }
+
+      // store business info
+      this.setEntityIncNo(filing.business.identifier)
+      this.setEntityType(filing.business.legalType)
+
+      // store NR Number if present
+      const nr = filing.incorporationApplication?.nameRequest
+      // workaround for old or new property name
+      this.nrNumber = nr?.nrNum || nr?.nrNumber
+
+      switch (filing.header.status) {
+        case 'DRAFT':
+          // this is a Draft Incorporation Application
+          this.setEntityStatus(EntityStatus.DRAFT_INCORP_APP)
+
+          this.setTasks([
+            {
+              enabled: true,
+              order: 1,
+              task: {
+                filing
+              }
+            }
+          ])
+          break
+
+        case 'PAID':
+          const incorporationApplication = filing.incorporationApplication
+          if (!incorporationApplication) {
+            throw new Error('Invalid incorporation application object')
+          }
+
+          // this is a Paid Incorporation Application
+          this.setEntityStatus(EntityStatus.PAID_INCORP_APP)
+
+          // set temporary addresses and directors
+          this.storeAddresses({ data: incorporationApplication.offices })
+          this.storeDirectors({ data: { directors: [...incorporationApplication.parties] } })
+
+          this.setFilings([{ filing }])
+          break
+
+        default:
+          throw new Error('Invalid incorporation application status')
+      }
+    },
+
     /** Gets NR data from Legal API. */
-    getNrData (): Promise<any> {
+    getNameRequest (): Promise<any> {
       const url = `nameRequests/${this.nrNumber}`
       return axios.get(url)
         // workaround because data is at "response.data.data"
         .then(response => Promise.resolve(response.data))
     },
 
-    storeNrData (data: any): void {
+    storeNrData (nr: any): void {
       // check if NR is valid
-      if (!this.isNrValid(data)) {
+      if (!this.isNrValid(nr)) {
         this.nameRequestInvalidDialog = true
-        // eslint-disable-next-line no-console
-        console.log('Invalid NR, data =', data)
         throw new Error('Invalid NR data')
       }
 
+      // FUTURE: uncomment this when Request Type Code is fixed (ie, not 'CR')
+      // // verify that NR type matches entity type
+      // if (nr.requestTypeCd !== this.entityType) {
+      //   this.nameRequestInvalidDialog = true
+      //   throw new Error('Invalid NR request type')
+      // }
+
       // check if NR is consumable
-      const nrState: NameRequestStates = this.getNrState(data)
+      const nrState: NameRequestStates = this.getNrState(nr)
       if (nrState !== NameRequestStates.APPROVED) {
         this.nameRequestInvalidDialog = true
         this.nameRequestInvalidType = nrState
-        // eslint-disable-next-line no-console
-        console.log('NR not consumable, state =', nrState)
         throw new Error('NR not consumable')
       }
 
-      // save data for later use (FOR DEBUGGING)
-      this.nameRequest = data
+      // save the NR
+      this.setNameRequest(nr)
 
-      // save the approved name, etc
-      this.setEntityName(data.names.find(name => name.state === NameRequestStates.APPROVED)?.name)
-      this.setEntityType(data.requestTypeCd)
-      this.setEntityIncNo(data.nrNum)
+      // save the approved name
+      const entityName = nr.names.find(name => name.state === NameRequestStates.APPROVED)?.name
+      this.setEntityName(entityName || 'Unknown Name')
     },
 
     /** Gets tasks list from Legal API. */
     getTasks (): Promise<any> {
-      const id = this.businessId || this.nrNumber
+      const id = this.businessId
       const url = `businesses/${id}/tasks`
       return axios.get(url)
-        .catch(error => {
-          // if Business or Name Request is not found, return empty array
-          if (error?.response?.status === NOT_FOUND) {
-            return Promise.resolve({ data: { tasks: [] } })
-          }
-          return Promise.reject(error)
-        })
     },
 
     storeTasks (response: any): void {
       const tasks = response?.data?.tasks
-      if (this.businessId) {
-        if (tasks) {
-          this.setTasks(tasks)
-        } else {
-          throw new Error('Invalid tasks')
-        }
-      }
-      // FUTURE: update this when API returns New Incorporation task (#3102)
-      if (this.nrNumber) {
-        if (tasks) {
-          // if we have existing tasks, use them
-          if (tasks.length > 0) {
-            this.setTasks(tasks)
-            this.setEntityStatus(EntityStatus.INCORPORATION_APPLICATION)
-          } else {
-            // otherwise create a New Incorporation task
-            tasks.push({
-              enabled: true,
-              order: 1,
-              task: {
-                todo: {
-                  nameRequest: this.nameRequest,
-                  header: {
-                    name: FilingTypes.NAME_REQUEST,
-                    status: FilingStatus.NEW
-                  }
-                }
-              }
-            })
-            this.setTasks(tasks)
-            this.setEntityStatus(EntityStatus.NAME_REQUEST)
-          }
-        } else {
-          throw new Error('Invalid tasks')
-        }
+      if (tasks) {
+        this.setTasks(tasks)
+      } else {
+        throw new Error('Invalid tasks')
       }
     },
 
     /** Gets filings list from Legal API. */
     getFilings (): Promise<any> {
-      const id = this.businessId || this.nrNumber
+      const id = this.businessId || this.tempRegNumber
       const url = `businesses/${id}/filings`
       return axios.get(url)
-        .catch(error => {
-          // if Business or Name Request is not found, return empty array
-          if (error?.response?.status === NOT_FOUND) {
-            return Promise.resolve({ data: { filings: [] } })
-          }
-          return Promise.reject(error)
-        })
     },
 
     storeFilings (response: any): void {
@@ -604,7 +662,7 @@ export default {
       // - fires after successful signin
       if (this.$route.name === DASHBOARD) {
         await this.startTokenService()
-        this.fetchData()
+        await this.fetchData()
       }
     }
   }

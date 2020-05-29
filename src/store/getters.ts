@@ -13,6 +13,11 @@ export default {
     return state.authRoles.includes('view')
   },
 
+  nrNumber (state): string {
+    // workaround for old or new property name
+    return state.nameRequest?.nrNum || state.nameRequest?.nrNumber
+  },
+
   isAnnualReportEditable (state): boolean {
     return (state.currentFilingStatus === FilingStatus.NEW || state.currentFilingStatus === FilingStatus.DRAFT)
   },
@@ -21,8 +26,8 @@ export default {
     switch (state.currentFilingStatus) {
       case FilingStatus.NEW: return ''
       case FilingStatus.DRAFT: return 'Draft'
-      default: return state.currentFilingStatus
     }
+    return state.currentFilingStatus
   },
 
   // get last Change of Directors filing from list of past filings
@@ -72,9 +77,5 @@ export default {
       }
     }
     return lastFilingDate
-  },
-
-  getConfigObject (state): object {
-    return null
   }
 }

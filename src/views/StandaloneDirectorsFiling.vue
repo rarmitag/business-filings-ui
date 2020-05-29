@@ -29,6 +29,12 @@
       attach="#standalone-directors"
     />
 
+    <bcol-error-dialog
+      :bcolObject="bcolObj"
+      :filingType="FilingTypes.CHANGE_OF_DIRECTORS"
+      @exit="navigateToDashboard(true)"
+      attach="#standalone-directors"/>
+
     <!-- Initial Page Load Transition -->
     <div class="loading-container fade-out">
       <div class="loading__content">
@@ -46,7 +52,7 @@
               <article id="standalone-directors-article">
                 <header>
                   <h1 id="filing-header">Director Change</h1>
-                  <p>Select the date of your director changes. If you have director changes that occured on
+                  <p>Select the date of your director changes. If you have director changes that occurred on
                       different dates, you will need to perform multiple Director Change filings &mdash;
                       one for each unique date.</p>
 
@@ -313,10 +319,11 @@ import SbcFeeSummary from 'sbc-common-components/src/components/SbcFeeSummary.vu
 import { Certify, StaffPayment, SummaryDirectors, SummaryCertify, SummaryStaffPayment } from '@/components/common'
 
 // Dialog Components
-import { ConfirmDialog, PaymentErrorDialog, ResumeErrorDialog, SaveErrorDialog } from '@/components/dialogs'
+import { ConfirmDialog, PaymentErrorDialog, ResumeErrorDialog,
+  SaveErrorDialog, BcolErrorDialog } from '@/components/dialogs'
 
 // Mixins
-import { CommonMixin, FilingMixin, ResourceLookupMixin } from '@/mixins'
+import { CommonMixin, FilingMixin, ResourceLookupMixin, BcolMixin } from '@/mixins'
 
 // Enums and Constants
 import { EntityTypes, FilingCodes, FilingStatus, FilingTypes } from '@/enums'
@@ -337,10 +344,11 @@ export default {
     ConfirmDialog,
     PaymentErrorDialog,
     ResumeErrorDialog,
-    SaveErrorDialog
+    SaveErrorDialog,
+    BcolErrorDialog
   },
 
-  mixins: [CommonMixin, FilingMixin, ResourceLookupMixin],
+  mixins: [CommonMixin, FilingMixin, ResourceLookupMixin, BcolMixin],
 
   data () {
     return {
@@ -375,6 +383,8 @@ export default {
       staffPaymentFormValid: null,
       totalFee: 0,
 
+      // bcol error variables
+      bcolObj: null,
       // enums
       EntityTypes,
       FilingCodes,
@@ -529,7 +539,8 @@ export default {
         const filingId: number = +filing.header.filingId
 
         // whether this is a staff or no-fee filing
-        const prePaidFiling = (this.isRoleStaff || !this.isPayRequired)
+        const paymentCompleted = filing.header?.paymentStatusCode === 'COMPLETED'
+        const prePaidFiling = (this.isRoleStaff || !this.isPayRequired || paymentCompleted)
 
         // if filing needs to be paid, redirect to Pay URL
         if (!prePaidFiling) {
@@ -625,9 +636,14 @@ export default {
           }
           filing = res.data.filing
           this.haveChanges = false
-        }).catch(error => {
+        }).catch(async error => {
           if (error && error.response && error.response.status === PAYMENT_REQUIRED) {
-            this.paymentErrorDialog = true
+            const errCode = this.getErrorCode(error)
+            if (errCode) {
+              this.bcolObj = await this.getErrorObj(errCode.payment_error_type)
+            } else {
+              this.paymentErrorDialog = true
+            }
           } else if (error && error.response && error.response.status === BAD_REQUEST) {
             if (error.response.data.errors) {
               this.saveErrors = error.response.data.errors
@@ -654,9 +670,14 @@ export default {
           }
           filing = res.data.filing
           this.haveChanges = false
-        }).catch(error => {
+        }).catch(async error => {
           if (error && error.response && error.response.status === PAYMENT_REQUIRED) {
-            this.paymentErrorDialog = true
+            const errCode = this.getErrorCode(error)
+            if (errCode) {
+              this.bcolObj = await this.getErrorObj(errCode.payment_error_type)
+            } else {
+              this.paymentErrorDialog = true
+            }
           } else if (error && error.response && error.response.status === BAD_REQUEST) {
             if (error.response.data.errors) {
               this.saveErrors = error.response.data.errors
@@ -704,7 +725,7 @@ export default {
               this.initialCODDate = filing.header.effectiveDate.slice(0, 10)
             } else {
               // eslint-disable-next-line no-console
-              console.error('fetchChangeOfDirectors() error = missing Effective Date')
+              console.log('fetchChangeOfDirectors() error = missing Effective Date')
             }
 
             const changeOfDirectors = filing.changeOfDirectors
@@ -748,12 +769,14 @@ export default {
         }
       }).catch(error => {
         // eslint-disable-next-line no-console
-        console.error('fetchData() error =', error)
+        console.log('fetchData() error =', error)
         this.resumeErrorDialog = true
       })
     },
 
     resetErrors () {
+      this.paymentErrorDialog = false
+      this.bcolObj = null
       this.saveErrorDialog = false
       this.saveErrors = []
       this.saveWarnings = []
@@ -800,7 +823,7 @@ export default {
           })
           .catch(error => {
             // eslint-disable-next-line no-console
-            console.error('hasTasks() error =', error)
+            console.log('hasTasks() error =', error)
             this.saveErrorDialog = true
           })
       }

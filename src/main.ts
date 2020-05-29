@@ -10,13 +10,13 @@ import Vue2Filters from 'vue2-filters' // needed by SbcFeeSummary
 import { fetchConfig } from '@/utils'
 import { getVueRouter } from '@/router'
 import { getVuexStore } from '@/store'
-import { withFlagProvider } from 'ld-vue'
 import '@/registerServiceWorker'
 import '@/assets/styles/base.scss'
 import '@/assets/styles/layout.scss'
 import '@/assets/styles/overrides.scss'
 import KeycloakService from 'sbc-common-components/src/services/keycloak.services'
 import App from '@/App.vue'
+import { initLDClient, featureFlags } from '@/common/FeatureFlags'
 
 // get rid of "You are running Vue in development mode" console message
 Vue.config.productionTip = false
@@ -30,6 +30,14 @@ Vue.use(Vue2Filters)
 async function start () {
   // fetch config from environment and API
   await fetchConfig()
+
+  // initialize Launch Darkly
+  await initLDClient()
+
+  // if this is a draft Incorp App, check if we are allowing user to go to Create UI
+  if (sessionStorage.getItem('TEMP_REG_NUMBER') && !featureFlags.getFlag('bcrs-create-ui-enabled')) {
+    throw new Error('create-ui is disabled')
+  }
 
   // configure Keycloak Service
   console.info('Starting Keycloak service...') // eslint-disable-line no-console
@@ -45,21 +53,19 @@ async function start () {
     vuetify: new Vuetify({ iconfont: 'mdi' }),
     router,
     store,
-    mixins: [withFlagProvider({ clientSideId: window['ldClientId'] })],
     render: h => h(App)
   }).$mount('#app')
 }
 
 // execution and error handling
 start().catch(error => {
-  console.error(error) // eslint-disable-line no-console
+  console.log(error) // eslint-disable-line no-console
+  alert('There was an error starting this page. (See console for details.)\n' +
+  'Please try again later.')
   // try to redirect to Business Registry home page
   const businessesUrl = sessionStorage.getItem('BUSINESSES_URL')
   if (businessesUrl) {
     // assume Businesses URL is always reachable
     window.location.assign(businessesUrl)
-  } else {
-    alert('There was an error starting this page. (See console for details.)\n' +
-      'Please try again later.')
   }
 })

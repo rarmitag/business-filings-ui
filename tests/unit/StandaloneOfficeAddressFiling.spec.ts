@@ -11,7 +11,7 @@ import StandaloneOfficeAddressFiling from '@/views/StandaloneOfficeAddressFiling
 import { Certify, OfficeAddresses, StaffPayment } from '@/components/common'
 import VueRouter from 'vue-router'
 import mockRouter from './mockRouter'
-import { BAD_REQUEST } from 'http-status-codes'
+import { BAD_REQUEST, PAYMENT_REQUIRED } from 'http-status-codes'
 import { configJson } from '@/resources/business-config'
 
 Vue.use(Vuetify)
@@ -659,7 +659,6 @@ describe('Standalone Office Address Filing - Part 3 - Submitting', () => {
 
     // click the File & Pay button
     button.trigger('click')
-
     await flushPromises()
 
     // verify redirection
@@ -719,8 +718,7 @@ describe('Standalone Office Address Filing - Part 3 - Submitting', () => {
 
     // click the File & Pay button
     button.trigger('click')
-    // work-around because click trigger isn't working
-    await vm.onClickFilePay()
+    await flushPromises()
 
     // verify v-tooltip text - Todo: How to get the tool tip rendered outside the wrapper
     // const tooltipText = wrapper.find('#coa-file-pay-btn + span').text()
@@ -950,7 +948,6 @@ describe('Standalone Office Address Filing - Part 3B - Submitting (BCOMP)', () =
 
     // click the File & Pay button
     button.trigger('click')
-
     await flushPromises()
 
     // verify redirection
@@ -1010,6 +1007,7 @@ describe('Standalone Office Address Filing - Part 3B - Submitting (BCOMP)', () =
 
     // click the File & Pay button
     button.trigger('click')
+    await flushPromises()
 
     // verify v-tooltip text - Todo: How to get the tool tip rendered outside the wrapper
     // const tooltipText = wrapper.find('#coa-file-pay-btn + span').text()
@@ -1116,7 +1114,8 @@ describe('Standalone Office Address Filing - Part 4 - Saving', () => {
       // TODO: verify that new filing was created
 
       // click the Save button
-      wrapper.find('#coa-save-btn').trigger('click')
+      // wrapper.find('#coa-save-btn').trigger('click')
+      // await flushPromises()
       // work-around because click trigger isn't working
       await vm.onClickSave()
 
@@ -1143,7 +1142,8 @@ describe('Standalone Office Address Filing - Part 4 - Saving', () => {
     vm.certifyFormValid = true
 
     // click the Save & Resume Later button
-    wrapper.find('#coa-save-resume-btn').trigger('click')
+    // wrapper.find('#coa-save-resume-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSaveResume()
 
@@ -1255,7 +1255,8 @@ describe('Standalone Office Address Filing - Part 4B - Saving (BCOMP)', () => {
       // TODO: verify that new filing was created
 
       // click the Save button
-      wrapper.find('#coa-save-btn').trigger('click')
+      // wrapper.find('#coa-save-btn').trigger('click')
+      // await flushPromises()
       // work-around because click trigger isn't working
       await vm.onClickSave()
 
@@ -1282,7 +1283,8 @@ describe('Standalone Office Address Filing - Part 4B - Saving (BCOMP)', () => {
     vm.certifyFormValid = true
 
     // click the Save & Resume Later button
-    wrapper.find('#coa-save-resume-btn').trigger('click')
+    // wrapper.find('#coa-save-resume-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSaveResume()
 
@@ -1364,7 +1366,8 @@ describe('Standalone Office Address Filing - Part 5 - Data', () => {
 
   it('includes certification data in the header', async () => {
     // click the Save button
-    wrapper.find('#coa-save-btn').trigger('click')
+    // wrapper.find('#coa-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1461,7 +1464,8 @@ describe('Standalone Office Address Filing - Part 5B - Data (BCOMP)', () => {
 
   it('includes certification data in the header', async () => {
     // click the Save button
-    wrapper.find('#coa-save-btn').trigger('click')
+    // wrapper.find('#coa-save-btn').trigger('click')
+    // await flushPromises()
     // work-around because click trigger isn't working
     await vm.onClickSave()
 
@@ -1673,7 +1677,8 @@ describe('Standalone Office Address Filing - Part 6 - Error/Warning Dialogs', ()
       // TODO: verify that new filing was created
 
       // click the File & Pay button
-      wrapper.find('#coa-file-pay-btn').trigger('click')
+      // wrapper.find('#coa-file-pay-btn').trigger('click')
+      // await flushPromises()
       // work-around because click trigger isn't working
       await vm.onClickFilePay()
 
@@ -1725,7 +1730,8 @@ describe('Standalone Office Address Filing - Part 6 - Error/Warning Dialogs', ()
       // TODO: verify that new filing was created
 
       // click the File & Pay button
-      wrapper.find('#coa-file-pay-btn').trigger('click')
+      // wrapper.find('#coa-file-pay-btn').trigger('click')
+      // await flushPromises()
       // work-around because click trigger isn't working
       await vm.onClickFilePay()
 
@@ -1739,4 +1745,139 @@ describe('Standalone Office Address Filing - Part 6 - Error/Warning Dialogs', ()
       wrapper.destroy()
     }
   )
+})
+
+describe('Change of Directors - BCOL error dialog on save', () => {
+  beforeEach(() => {
+    // init store
+    store.state.currentDate = '2019-07-15'
+    store.state.businessId = 'CP0001191'
+    store.state.entityIncNo = 'CP0001191'
+    store.state.entityType = 'CP'
+    store.state.entityName = 'Legal Name - CP0001191'
+    store.state.ARFilingYear = 2017
+    store.state.currentFilingStatus = 'NEW'
+
+    // mock "file post" endpoint, with a BCOL error response
+    const p1 = Promise.reject({
+      response: {
+        status: PAYMENT_REQUIRED,
+        data: {
+          errors: [
+            {
+              payment_error_type: 'BCOL_ERROR'
+            }
+          ],
+          filing: {
+            annualReport: {
+              annualGeneralMeetingDate: '2018-07-15'
+            },
+            business: {
+              cacheId: 1,
+              foundingDate: '2007-04-08',
+              identifier: 'CP0001191',
+              lastLedgerTimestamp: '2019-04-15T20:05:49.068272+00:00',
+              legalName: 'Legal Name - CP0001191'
+            },
+            header: {
+              name: 'annualReport',
+              date: '2017-06-06',
+              submitter: 'cp0001191',
+              status: 'DRAFT',
+              certifiedBy: 'Full Name',
+              email: 'no_one@never.get',
+              filingId: 123
+            }
+          }
+        }
+      }
+    })
+
+    p1.catch(() => {}) // pre-empt "unhandled promise rejection" warning
+
+    sinon
+      .stub(axios, 'post')
+      .withArgs('businesses/CP0001191/filings')
+      .returns(p1)
+  })
+
+  it('Attempts to file and pay with a BCOL error', async () => {
+    // set necessary session variables
+    sessionStorage.setItem('BASE_URL', `${process.env.VUE_APP_PATH}/`)
+    sessionStorage.setItem('PAY_API_URL', '')
+    sessionStorage.setItem('AUTH_URL', 'auth/')
+    const get = sinon.stub(axios, 'get')
+
+    get.withArgs('businesses/CP0001191/tasks')
+      .returns(new Promise(resolve => resolve({ data: { tasks: [] } })))
+
+    const localVue = createLocalVue()
+    localVue.use(VueRouter)
+    const router = mockRouter.mock()
+    router.push({ name: 'standalone-addresses', params: { filingId: '0' } }) // new filing id
+
+    const wrapper = mount(StandaloneOfficeAddressFiling, {
+      store,
+      localVue,
+      router,
+      stubs: {
+        OfficeAddresses: true,
+        Certify: true,
+        StaffPayment: true,
+        Affix: true,
+        SbcFeeSummary: true,
+        ConfirmDialog: true,
+        PaymentErrorDialog: true,
+        ResumeErrorDialog: true,
+        BcolErrorDialog: true,
+        SaveErrorDialog: true
+      },
+      vuetify
+    })
+    const vm: any = wrapper.vm
+
+    // set all properties truthy
+    vm.staffPaymentFormValid = true
+    vm.certifyFormValid = true
+    vm.officeAddressFormValid = true
+    store.state.filingData = [{}] // dummy data
+
+    // stub address data
+    vm.addresses = {
+      registeredOffice: {
+        deliveryAddress: {},
+        mailingAddress: {}
+      }
+    }
+
+    // make sure a fee is required
+    vm.totalFee = 100
+
+    // sanity check
+    expect(vm.bcolObj).toBeNull()
+
+    const button = wrapper.find('#coa-file-pay-btn')
+    expect(button.attributes('disabled')).toBeUndefined()
+
+    // Stub out a response from the Error endpoint in Pay API
+    get.withArgs('codes/errors/BCOL_ERROR')
+      .returns(new Promise(resolve => resolve({
+        data: {
+          detail: 'An error has occurred',
+          title: 'Error'
+        }
+      })))
+
+    // click the File & Pay button
+    // button.trigger('click')
+    // await flushPromises()
+    // work-around because click trigger isn't working
+    await vm.onClickFilePay()
+
+    // verify a bcol error message was retrieved
+    expect(vm.bcolObj?.detail?.length).toBeGreaterThan(0)
+    expect(vm.bcolObj?.title?.length).toBeGreaterThan(0)
+
+    wrapper.destroy()
+  })
 })

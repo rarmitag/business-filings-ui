@@ -12,6 +12,7 @@ import flushPromises from 'flush-promises'
 
 // Components
 import { DetailsList } from '@/components/common'
+import Vue2Filters from 'vue2-filters'
 
 // NB: test util async issue
 // in some cases, the elements are not updated during the test
@@ -21,6 +22,7 @@ import { DetailsList } from '@/components/common'
 Vue.config.silent = true
 
 Vue.use(Vuetify)
+Vue.use(Vue2Filters)
 Vue.use(Vuelidate)
 
 const vuetify = new Vuetify({})
@@ -33,6 +35,7 @@ document.body.append(app)
 
 describe('TodoList - UI', () => {
   beforeAll(() => {
+    sessionStorage.clear()
     sessionStorage.setItem('BUSINESS_ID', 'CP0001191')
     store.state.entityType = 'CP'
   })
@@ -43,13 +46,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(0)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(0)
     expect(wrapper.emitted('todo-count')).toEqual([[0]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[false]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[false]])
     expect(vm.$el.querySelector('.no-results')).not.toBeNull()
     expect(vm.$el.querySelector('.no-results').textContent).toContain('You don\'t have anything to do yet')
 
@@ -114,13 +116,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(3)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(3)
     expect(wrapper.emitted('todo-count')).toEqual([[3]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[false]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[false]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     // verify that first task is enabled and other 2 are disabled
@@ -165,13 +166,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[false]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[false]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -203,7 +203,7 @@ describe('TodoList - UI', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -213,13 +213,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -245,7 +244,7 @@ describe('TodoList - UI', () => {
               'status': 'DRAFT',
               'filingId': 1
             },
-            'changeOfAddress': { }
+            'changeOfAddress': {}
           }
         },
         'enabled': true,
@@ -255,13 +254,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -287,7 +285,7 @@ describe('TodoList - UI', () => {
               'status': 'DRAFT',
               'filingId': 1
             },
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -297,13 +295,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -351,13 +348,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -407,13 +403,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -429,7 +424,7 @@ describe('TodoList - UI', () => {
     wrapper.destroy()
   })
 
-  it('displays a DetailsList on a DRAFT \'Correction\' task', async () => {
+  it('displays details on a DRAFT \'Correction\' task', async () => {
     // init store
     store.state.tasks = [
       {
@@ -466,13 +461,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -480,14 +474,14 @@ describe('TodoList - UI', () => {
     expect(item.querySelector('.list-item__title').textContent).toContain('Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('DRAFT')
 
-    expect(item.querySelector('.list-item__subtitle .todo-status').textContent)
+    expect(item.querySelector('.list-item__subtitle .todo-subtitle').textContent)
       .toContain('Detail (1)')
 
     // Validate the child component does NOT exist on the parent before opening the dropdown
     expect(wrapper.find(DetailsList).exists()).toBe(false)
 
     // Open the details list dropdown
-    const button = item.querySelector('.list-item__subtitle .todo-status .info-btn')
+    const button = item.querySelector('.list-item__subtitle .todo-subtitle .expand-btn')
     await button.click()
 
     expect(vm.$el.querySelector('#todo-list .todo-list-detail').textContent)
@@ -531,13 +525,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -548,7 +541,7 @@ describe('TodoList - UI', () => {
     wrapper.destroy()
   })
 
-  it('displays a DetailsList on a PENDING \'Correction\' task', async () => {
+  it('displays details on a PENDING \'Correction\' task', async () => {
     // init store
     store.state.tasks = [
       {
@@ -582,13 +575,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -596,14 +588,14 @@ describe('TodoList - UI', () => {
     expect(item.querySelector('.list-item__title').textContent).toContain('Annual Report')
     expect(item.querySelector('.list-item__subtitle').textContent).toContain('FILING PENDING')
 
-    expect(item.querySelector('.list-item__subtitle .todo-status').textContent)
+    expect(item.querySelector('.list-item__subtitle .todo-subtitle').textContent)
       .toContain('Detail (1)')
 
     // Validate the child component does NOT exist on the parent before opening the dropdown
     expect(wrapper.find(DetailsList).exists()).toBe(false)
 
     // Open the details list dropdown
-    const button = item.querySelector('.list-item__subtitle .todo-status .info-btn')
+    const button = item.querySelector('.list-item__subtitle .todo-subtitle .expand-btn')
     await button.click()
 
     expect(vm.$el.querySelector('#todo-list .todo-list-detail').textContent)
@@ -636,7 +628,7 @@ describe('TodoList - UI', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -646,13 +638,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -685,7 +676,7 @@ describe('TodoList - UI', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -695,13 +686,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -728,7 +718,7 @@ describe('TodoList - UI', () => {
               'paymentToken': 12345678,
               'filingId': 1
             },
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -738,13 +728,12 @@ describe('TodoList - UI', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -769,7 +758,7 @@ describe('TodoList - UI', () => {
               'paymentToken': 12345678,
               'filingId': 123
             },
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -777,19 +766,14 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store,
-      vuetify,
-      propsData: {
-        inProcessFiling: 123
-      } })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 123 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -816,7 +800,7 @@ describe('TodoList - UI', () => {
               'paymentToken': 12345678,
               'filingId': 123
             },
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -824,17 +808,14 @@ describe('TodoList - UI', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 456 } })
     const vm = wrapper.vm as any
-
-    wrapper.setProps({ inProcessFiling: 456 })
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -849,10 +830,143 @@ describe('TodoList - UI', () => {
 
     wrapper.destroy()
   })
+
+  // FUTURE: enable when/if we have NRs without a draft
+  xit('displays the Name Request details in the Todo list', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'enabled': true,
+        'order': 1,
+        'task': {
+          'todo': {
+            'header': {
+              'name': 'nameRequest',
+              'status': 'NEW'
+            },
+            'nameRequest': {
+              'additionalInfo': '',
+              'applicants': {
+                'addrLine1': '1234 Fake Street',
+                'addrLine2': 'Block 3',
+                'addrLine3': 'Suite 1001',
+                'city': 'Victoria',
+                'clientFirstName': 'Connor',
+                'clientLastName': 'Horton',
+                'contact': 'James Bond',
+                'countryTypeCd': 'CA',
+                'declineNotificationInd': 'N',
+                'emailAddress': 'abc@test.com',
+                'faxNumber': null,
+                'firstName': 'Adam',
+                'lastName': 'Smith',
+                'middleName': 'Jane',
+                'partyId': 1657726,
+                'phoneNumber': '7777777777',
+                'postalCd': 'V9E 3S2',
+                'stateProvinceCd': 'BC'
+              },
+              'comments': [],
+              'consentFlag': null,
+              'consent_dt': null,
+              'corpNum': null,
+              'entity_type_cd': 'CR',
+              'expirationDate': 'Mon, 21 Nov 2022 08:00:00 GMT',
+              'furnished': 'Y',
+              'hasBeenReset': false,
+              'id': 2258180,
+              'lastUpdate': 'Fri, 03 Apr 2020 20:07:10 GMT',
+              'names': [
+                {
+                  'choice': 1,
+                  'designation': 'INC.',
+                  'name': 'Test Name 1 INC.',
+                  'name_type_cd': null,
+                  'state': 'APPROVED'
+                },
+                {
+                  'choice': 3,
+                  'designation': 'INCORPORATED',
+                  'name': 'Test Name 2 INC.',
+                  'name_type_cd': null,
+                  'state': 'NE'
+                },
+                {
+                  'choice': 2,
+                  'designation': 'INCORPORATED',
+                  'name': 'Test Name 3 INC.',
+                  'name_type_cd': null,
+                  'state': 'NE'
+                }
+              ],
+              'nrNumber': 'NR 1234567',
+              'priorityCd': 'Y',
+              'priorityDate': 'Wed, 25 Sep 2019 17:48:58 GMT',
+              'requestTypeCd': 'CR',
+              'request_action_cd': 'NRO-NEWAML',
+              'state': 'APPROVED',
+              'submitCount': 1,
+              'submittedDate': 'Wed, 25 Sep 2019 17:48:00 GMT',
+              'submitter_userid': '',
+              'userId': 'abc',
+              'xproJurisdiction': null
+            }
+          }
+        }
+      }
+    ]
+
+    store.state.entityStatus = 'NAME_REQUEST'
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    const vm = wrapper.vm as any
+    await Vue.nextTick()
+
+    expect(vm.taskItems.length).toEqual(1)
+
+    wrapper.find('.expand-btn').trigger('click')
+    await flushPromises()
+
+    const nrListSelector = '#name-request-info ul li'
+    const itemCount = vm.$el.querySelectorAll(nrListSelector).length
+
+    expect(itemCount).toEqual(6)
+
+    const title = vm.$el.querySelectorAll(nrListSelector)[0]
+    const entityType = vm.$el.querySelectorAll(nrListSelector)[1]
+    const requestType = vm.$el.querySelectorAll(nrListSelector)[2]
+    const expiryDate = vm.$el.querySelectorAll(nrListSelector)[3]
+    const status = vm.$el.querySelectorAll(nrListSelector)[4]
+    const conditionConsent = vm.$el.querySelectorAll(nrListSelector)[5]
+
+    expect(title.textContent).toContain('Name Request')
+    expect(entityType.textContent).toContain('Entity Type: BC Benefit Company')
+    expect(requestType.textContent).toContain('Request Type: New Business')
+    expect(expiryDate.textContent).toContain('Expiry Date: Nov 21, 2022')
+    expect(status.textContent).toContain('Status: Approved')
+    expect(conditionConsent.textContent).toContain('Condition/Consent: Not Required')
+
+    const applicantInfoListSelector = '#name-request-applicant-info ul li'
+    const applicantInfoListCount = vm.$el.querySelectorAll(applicantInfoListSelector).length
+    const name = vm.$el.querySelectorAll(applicantInfoListSelector)[1]
+    const address = vm.$el.querySelectorAll(applicantInfoListSelector)[2]
+    const email = vm.$el.querySelectorAll(applicantInfoListSelector)[3]
+    const phone = vm.$el.querySelectorAll(applicantInfoListSelector)[4]
+
+    expect(applicantInfoListCount).toEqual(5)
+    expect(name.textContent).toContain('Name: Adam Jane Smith')
+    expect(address.textContent)
+      .toContain('Address: 1234 Fake Street, Block 3, Suite 1001, Victoria, BC, V9E 3S2, Canada')
+    expect(email.textContent).toContain('Email: abc@test.com')
+    expect(phone.textContent).toContain('Phone: (777) 777-7777')
+
+    wrapper.destroy()
+  })
 })
 
 describe('TodoList - UI - BCOMP', () => {
   beforeAll(() => {
+    sessionStorage.clear()
     sessionStorage.setItem('BUSINESS_ID', 'BC0007291')
     store.state.entityType = 'BC'
   })
@@ -863,13 +977,12 @@ describe('TodoList - UI - BCOMP', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(0)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(0)
     expect(wrapper.emitted('todo-count')).toEqual([[0]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[false]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[false]])
     expect(vm.$el.querySelector('.no-results')).not.toBeNull()
     expect(vm.$el.querySelector('.no-results').textContent).toContain('You don\'t have anything to do yet')
 
@@ -931,13 +1044,12 @@ describe('TodoList - UI - BCOMP', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(3)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(3)
     expect(wrapper.emitted('todo-count')).toEqual([[3]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[false]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[false]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     // verify that first task is enabled and other 2 are disabled
@@ -989,13 +1101,12 @@ describe('TodoList - UI - BCOMP', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[false]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[false]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -1013,7 +1124,7 @@ describe('TodoList - UI - BCOMP', () => {
     wrapper.destroy()
   })
 
-  it('displays a task but `File Now` Btn is disabled when checkbox is unselected', async () => {
+  it('displays a task but \'File Now\' is disabled when checkbox is unselected', async () => {
     // init store
     store.state.tasks = [
       {
@@ -1036,13 +1147,12 @@ describe('TodoList - UI - BCOMP', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[false]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[false]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -1074,7 +1184,7 @@ describe('TodoList - UI - BCOMP', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1084,13 +1194,12 @@ describe('TodoList - UI - BCOMP', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -1122,7 +1231,7 @@ describe('TodoList - UI - BCOMP', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1132,13 +1241,12 @@ describe('TodoList - UI - BCOMP', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -1164,7 +1272,7 @@ describe('TodoList - UI - BCOMP', () => {
               'status': 'PAID',
               'paymentToken': 12345678
             },
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1174,13 +1282,12 @@ describe('TodoList - UI - BCOMP', () => {
 
     const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -1205,7 +1312,7 @@ describe('TodoList - UI - BCOMP', () => {
               'paymentToken': 12345678,
               'filingId': 123
             },
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1213,21 +1320,14 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store,
-      vuetify,
-      propsData: {
-        inProcessFiling: 123
-      } })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 123 } })
     const vm = wrapper.vm as any
-
-    // wrapper.setProps({ inProcessFiling: 123 })
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -1254,7 +1354,7 @@ describe('TodoList - UI - BCOMP', () => {
               'paymentToken': 12345678,
               'filingId': 123
             },
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1262,17 +1362,14 @@ describe('TodoList - UI - BCOMP', () => {
       }
     ]
 
-    const wrapper = mount(TodoList, { store, vuetify })
+    const wrapper = mount(TodoList, { store, vuetify, propsData: { inProcessFiling: 456 } })
     const vm = wrapper.vm as any
-
-    wrapper.setProps({ inProcessFiling: 456 })
-
-    await flushPromises()
+    await Vue.nextTick()
 
     expect(vm.taskItems.length).toEqual(1)
     expect(vm.$el.querySelectorAll('.todo-item').length).toEqual(1)
     expect(wrapper.emitted('todo-count')).toEqual([[1]])
-    expect(wrapper.emitted('has-blocker-filing')).toEqual([[true]])
+    expect(wrapper.emitted('has-blocker-task')).toEqual([[true]])
     expect(vm.$el.querySelector('.no-results')).toBeNull()
 
     const item = vm.$el.querySelector('.list-item')
@@ -1294,21 +1391,22 @@ describe('TodoList - Click Tests', () => {
 
   beforeAll(() => {
     // init store
+    sessionStorage.clear()
     sessionStorage.setItem('BUSINESS_ID', 'CP0001191')
     store.state.businessId = 'CP0001191'
     store.state.entityIncNo = 'CP0001191'
+    store.state.entityType = 'CP'
 
     // mock the window.location.assign function
     delete window.location
     window.location = { assign: jest.fn() } as any
-    store.state.entityType = 'CP'
   })
 
   afterAll(() => {
     window.location.assign = assign
   })
 
-  it('routes to Annual Report page when \'File Now\' clicked', done => {
+  it('routes to Annual Report page when \'File Now\' clicked', async () => {
     // init store
     store.state.tasks = [
       {
@@ -1337,29 +1435,27 @@ describe('TodoList - Click Tests', () => {
 
     const wrapper = mount(TodoList, { localVue, store, router, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      expect(vm.taskItems.length).toEqual(1)
+    expect(vm.taskItems.length).toEqual(1)
 
-      const item = vm.$el.querySelector('.list-item')
-      const button = item.querySelector('.list-item__actions .v-btn')
-      expect(button.textContent).toContain('File Annual Report')
+    const item = vm.$el.querySelector('.list-item')
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.textContent).toContain('File Annual Report')
 
-      await button.click()
+    await button.click()
 
-      // verify that filing status was set
-      expect(vm.$store.state.currentFilingStatus).toBe('NEW')
+    // verify that filing status was set
+    expect(vm.$store.state.currentFilingStatus).toBe('NEW')
 
-      // verify routing to Annual Report page with id=0
-      expect(vm.$route.name).toBe('annual-report')
-      expect(vm.$route.params.filingId).toBe(0)
+    // verify routing to Annual Report page with id=0
+    expect(vm.$route.name).toBe('annual-report')
+    expect(vm.$route.params.filingId).toBe(0)
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
   })
 
-  it('routes to Annual Report page when \'Resume\' is clicked', done => {
+  it('routes to Annual Report page when \'Resume\' is clicked', async () => {
     // init store
     store.state.tasks = [
       {
@@ -1376,7 +1472,7 @@ describe('TodoList - Click Tests', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1391,29 +1487,27 @@ describe('TodoList - Click Tests', () => {
 
     const wrapper = mount(TodoList, { localVue, store, router, vuetify })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      expect(vm.taskItems.length).toEqual(1)
+    expect(vm.taskItems.length).toEqual(1)
 
-      const item = vm.$el.querySelector('.list-item')
-      const button = item.querySelector('.list-item__actions .v-btn')
-      expect(button.querySelector('.v-btn__content').textContent).toContain('Resume')
+    const item = vm.$el.querySelector('.list-item')
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.querySelector('.v-btn__content').textContent).toContain('Resume')
 
-      await button.click()
+    await button.click()
 
-      // verify that filing status was set
-      expect(vm.$store.state.currentFilingStatus).toBe('DRAFT')
+    // verify that filing status was set
+    expect(vm.$store.state.currentFilingStatus).toBe('DRAFT')
 
-      // verify routing to Annual Report page with id=123
-      expect(vm.$route.name).toBe('annual-report')
-      expect(vm.$route.params.filingId).toBe(123)
+    // verify routing to Annual Report page with id=123
+    expect(vm.$route.name).toBe('annual-report')
+    expect(vm.$route.params.filingId).toBe(123)
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
   })
 
-  it('redirects to Pay URL when \'Resume Payment\' is clicked', done => {
+  it('redirects to Pay URL when \'Resume Payment\' is clicked', async () => {
     // set necessary session variables
     sessionStorage.setItem('BASE_URL', `${process.env.VUE_APP_PATH}/`)
     sessionStorage.setItem('AUTH_URL', 'auth/')
@@ -1435,7 +1529,7 @@ describe('TodoList - Click Tests', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1445,27 +1539,25 @@ describe('TodoList - Click Tests', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      expect(vm.taskItems.length).toEqual(1)
+    expect(vm.taskItems.length).toEqual(1)
 
-      const item = vm.$el.querySelector('.list-item')
-      const button = item.querySelector('.list-item__actions .v-btn')
-      expect(button.getAttribute('disabled')).toBeNull()
-      expect(button.querySelector('.v-btn__content').textContent).toContain('Resume Payment')
+    const item = vm.$el.querySelector('.list-item')
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.getAttribute('disabled')).toBeNull()
+    expect(button.querySelector('.v-btn__content').textContent).toContain('Resume Payment')
 
-      await button.click()
+    await button.click()
 
-      // verify redirection
-      const payURL = 'auth/makepayment/654/' + encodeURIComponent('cooperatives/?filing_id=456')
-      expect(window.location.assign).toHaveBeenCalledWith(payURL)
+    // verify redirection
+    const payURL = 'auth/makepayment/654/' + encodeURIComponent('cooperatives/?filing_id=456')
+    expect(window.location.assign).toHaveBeenCalledWith(payURL)
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
   })
 
-  it('redirects to Pay URL when \'Retry Payment\' is clicked', done => {
+  it('redirects to Pay URL when \'Retry Payment\' is clicked', async () => {
     // set necessary session variables
     sessionStorage.setItem('BASE_URL', `${process.env.VUE_APP_PATH}/`)
     sessionStorage.setItem('AUTH_URL', 'auth/')
@@ -1487,7 +1579,7 @@ describe('TodoList - Click Tests', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1497,22 +1589,74 @@ describe('TodoList - Click Tests', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      const item = vm.$el.querySelector('.list-item')
-      const button = item.querySelector('.list-item__actions .v-btn')
-      expect(button.getAttribute('disabled')).toBeNull()
-      expect(button.querySelector('.v-btn__content').textContent).toContain('Retry Payment')
+    const item = vm.$el.querySelector('.list-item')
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.getAttribute('disabled')).toBeNull()
+    expect(button.querySelector('.v-btn__content').textContent).toContain('Retry Payment')
 
-      await button.click()
+    await button.click()
 
-      // verify redirection
-      const payURL = 'auth/makepayment/987/' + encodeURIComponent('cooperatives/?filing_id=789')
-      expect(window.location.assign).toHaveBeenCalledWith(payURL)
+    // verify redirection
+    const payURL = 'auth/makepayment/987/' + encodeURIComponent('cooperatives/?filing_id=789')
+    expect(window.location.assign).toHaveBeenCalledWith(payURL)
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
+  })
+
+  it('Confirm BCOL error is captured in todo list', async () => {
+    sessionStorage.setItem('PAY_API_URL', '')
+    // store a task with a filing associated to a BCOL error
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'annualReport',
+              'ARFilingYear': 2019,
+              'status': 'DRAFT',
+              'filingId': 123,
+              'paymentStatusCode': 'BCOL_ERROR'
+            },
+            'annualReport': {
+              'annualGeneralMeetingDate': '2019-07-15',
+              'annualReportDate': '2019-07-15'
+            },
+            'changeOfAddress': {},
+            'changeOfDirectors': {}
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    // stub out a response from the Error endpoint in Pay API
+    sinon.stub(axios, 'get').withArgs('codes/errors/BCOL_ERROR')
+      .returns(new Promise(resolve => resolve({
+        data: {
+          detail: 'An error has occurred',
+          title: 'Error'
+        }
+      })))
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    const vm = wrapper.vm as any
+    await flushPromises()
+
+    // the class appended to a todo div when an item has a bcol error
+    const todoItem = vm.$el.querySelector('.bcol-error')
+    expect(todoItem).toBeDefined()
+
+    wrapper.find('.expand-btn').trigger('click')
+    await flushPromises()
+
+    // confirm the message is visible after expansion panel clicked
+    const bcolPanel = vm.$el.querySelector('.bcol-todo-list-detail')
+    expect(bcolPanel.textContent).toContain('An error has occurred')
+
+    wrapper.destroy()
   })
 })
 
@@ -1521,6 +1665,7 @@ describe('TodoList - Click Tests - BCOMPs', () => {
 
   beforeAll(() => {
     // init store
+    sessionStorage.clear()
     sessionStorage.setItem('BUSINESS_ID', 'BC0007291')
     store.state.businessId = 'BC0007291'
     store.state.entityIncNo = 'BC0007291'
@@ -1535,7 +1680,7 @@ describe('TodoList - Click Tests - BCOMPs', () => {
     window.location.assign = assign
   })
 
-  it('routes to Annual Report page when \'File Now\' clicked', done => {
+  it('routes to Annual Report page when \'File Now\' clicked', async () => {
     // init store
     store.state.tasks = [
       {
@@ -1563,50 +1708,100 @@ describe('TodoList - Click Tests - BCOMPs', () => {
 
     const wrapper = mount(TodoList, { localVue, store, router, vuetify, propsData: { inProcessFiling: 0 } })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      expect(vm.taskItems.length).toEqual(1)
+    expect(vm.taskItems.length).toEqual(1)
 
-      // verify model state
-      expect(vm.confirmCheckbox).toBe(false)
+    // verify model state
+    expect(vm.confirmCheckbox).toBe(false)
 
-      // verify checkbox content
-      const firstTodoItem = vm.$el.querySelectorAll('.todo-item')[0]
-      const htmlDivElement = firstTodoItem.querySelector('.bcorps-ar-subtitle .todo-list-checkbox')
-      expect(htmlDivElement.textContent)
-        .toContain('All information about the Office Addresses and Current Directors is correct.')
+    // verify checkbox content
+    const firstTodoItem = vm.$el.querySelectorAll('.todo-item')[0]
+    const htmlDivElement = firstTodoItem.querySelector('.bcorps-ar-subtitle .todo-list-checkbox')
+    expect(htmlDivElement.textContent)
+      .toContain('All information about the Office Addresses and Current Directors is correct.')
 
-      // verify that checkbox is enabled
-      const htmlInputElement = htmlDivElement.querySelector('[type="checkbox"]')
-      expect(htmlInputElement.disabled).toBe(false)
+    // verify that checkbox is enabled
+    const htmlInputElement = htmlDivElement.querySelector('[type="checkbox"]')
+    expect(htmlInputElement.disabled).toBe(false)
 
-      // verify File Now button
-      const listItem = vm.$el.querySelector('.list-item')
-      const fileNowButton = listItem.querySelector('.list-item__actions .v-btn')
-      expect(fileNowButton.querySelector('.v-btn__content').textContent).toContain('File Annual Report')
-      expect(fileNowButton.disabled).toBe(true)
+    // verify File Now button
+    const listItem = vm.$el.querySelector('.list-item')
+    const fileNowButton = listItem.querySelector('.list-item__actions .v-btn')
+    expect(fileNowButton.querySelector('.v-btn__content').textContent).toContain('File Annual Report')
+    expect(fileNowButton.disabled).toBe(true)
 
-      // click checkbox to enable File Now button
-      await htmlInputElement.click()
-      expect(vm.confirmCheckbox).toBe(true)
-      expect(fileNowButton.disabled).toBe(false)
+    // click checkbox to enable File Now button
+    await htmlInputElement.click()
+    expect(vm.confirmCheckbox).toBe(true)
+    expect(fileNowButton.disabled).toBe(false)
 
-      // click File Now button
-      await fileNowButton.click()
+    // click File Now button
+    await fileNowButton.click()
 
-      // verify that filing status was set
-      expect(vm.$store.state.currentFilingStatus).toBe('NEW')
+    // verify that filing status was set
+    expect(vm.$store.state.currentFilingStatus).toBe('NEW')
 
-      // verify routing to Annual Report page with id=0
-      expect(vm.$route.name).toBe('annual-report')
-      expect(vm.$route.params.filingId).toBe(0)
+    // verify routing to Annual Report page with id=0
+    expect(vm.$route.name).toBe('annual-report')
+    expect(vm.$route.params.filingId).toBe(0)
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
   })
 
-  it('redirects to Pay URL when \'Resume Payment\' is clicked', done => {
+  it('routes to Annual Report page when \'Resume\' is clicked', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'annualReport',
+              'ARFilingYear': 2019,
+              'status': 'DRAFT',
+              'filingId': 123
+            },
+            'annualReport': {
+              'annualReportDate': '2019-07-15',
+              'nextARDate': '2020-07-15'
+            },
+            'changeOfAddress': {},
+            'changeOfDirectors': {}
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    // create a Local Vue and install router on it
+    const localVue = createLocalVue()
+    localVue.use(VueRouter)
+    const router = mockRouter.mock()
+
+    const wrapper = mount(TodoList, { localVue, store, router, vuetify })
+    const vm = wrapper.vm as any
+    await Vue.nextTick()
+
+    expect(vm.taskItems.length).toEqual(1)
+
+    const item = vm.$el.querySelector('.list-item')
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.querySelector('.v-btn__content').textContent).toContain('Resume')
+
+    await button.click()
+
+    // verify that filing status was set
+    expect(vm.$store.state.currentFilingStatus).toBe('DRAFT')
+
+    // verify routing to Annual Report page with id=123
+    expect(vm.$route.name).toBe('annual-report')
+    expect(vm.$route.params.filingId).toBe(123)
+
+    wrapper.destroy()
+  })
+
+  it('redirects to Pay URL when \'Resume Payment\' is clicked', async () => {
     // set necessary session variables
     sessionStorage.setItem('BASE_URL', `${process.env.VUE_APP_PATH}/`)
     sessionStorage.setItem('AUTH_URL', 'auth/')
@@ -1628,7 +1823,7 @@ describe('TodoList - Click Tests - BCOMPs', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1638,27 +1833,25 @@ describe('TodoList - Click Tests - BCOMPs', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      expect(vm.taskItems.length).toEqual(1)
+    expect(vm.taskItems.length).toEqual(1)
 
-      const item = vm.$el.querySelector('.list-item')
-      const button = item.querySelector('.list-item__actions .v-btn')
-      expect(button.getAttribute('disabled')).toBeNull()
-      expect(button.querySelector('.v-btn__content').textContent).toContain('Resume Payment')
+    const item = vm.$el.querySelector('.list-item')
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.getAttribute('disabled')).toBeNull()
+    expect(button.querySelector('.v-btn__content').textContent).toContain('Resume Payment')
 
-      await button.click()
+    await button.click()
 
-      // verify redirection
-      const payURL = 'auth/makepayment/654/' + encodeURIComponent('cooperatives/?filing_id=456')
-      expect(window.location.assign).toHaveBeenCalledWith(payURL)
+    // verify redirection
+    const payURL = 'auth/makepayment/654/' + encodeURIComponent('cooperatives/?filing_id=456')
+    expect(window.location.assign).toHaveBeenCalledWith(payURL)
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
   })
 
-  it('redirects to Pay URL when \'Retry Payment\' is clicked', done => {
+  it('redirects to Pay URL when \'Retry Payment\' is clicked', async () => {
     // set necessary session variables
     sessionStorage.setItem('BASE_URL', `${process.env.VUE_APP_PATH}/`)
     sessionStorage.setItem('AUTH_URL', 'auth/')
@@ -1680,7 +1873,7 @@ describe('TodoList - Click Tests - BCOMPs', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1690,28 +1883,219 @@ describe('TodoList - Click Tests - BCOMPs', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      const item = vm.$el.querySelector('.list-item')
-      const button = item.querySelector('.list-item__actions .v-btn')
-      expect(button.getAttribute('disabled')).toBeNull()
-      expect(button.querySelector('.v-btn__content').textContent).toContain('Retry Payment')
+    const item = vm.$el.querySelector('.list-item')
+    const button = item.querySelector('.list-item__actions .v-btn')
+    expect(button.getAttribute('disabled')).toBeNull()
+    expect(button.querySelector('.v-btn__content').textContent).toContain('Retry Payment')
 
-      await button.click()
+    await button.click()
 
-      // verify redirection
-      const payURL = 'auth/makepayment/987/' + encodeURIComponent('cooperatives/?filing_id=789')
-      expect(window.location.assign).toHaveBeenCalledWith(payURL)
+    // verify redirection
+    const payURL = 'auth/makepayment/987/' + encodeURIComponent('cooperatives/?filing_id=789')
+    expect(window.location.assign).toHaveBeenCalledWith(payURL)
 
-      wrapper.destroy()
-      done()
-    })
+    wrapper.destroy()
+  })
+})
+
+describe('TodoList - Click Tests - NRs and Incorp Apps', () => {
+  const { assign } = window.location
+
+  beforeAll(() => {
+    // init store
+    sessionStorage.clear()
+    sessionStorage.setItem('CREATE_URL', `${process.env.VUE_APP_PATH}/create/`)
+    sessionStorage.setItem('TEMP_REG_NUMBER', 'T123456789')
+    store.state.entityName = 'My Business Inc'
+    store.state.entityType = 'BC'
+
+    // mock the window.location.assign function
+    delete window.location
+    window.location = { assign: jest.fn() } as any
+  })
+
+  afterAll(() => {
+    window.location.assign = assign
+  })
+
+  // FUTURE: enable when/if we have NRs without a draft
+  xit('redirects to Create URL when \'Incorporate using this NR\' is clicked', async () => {
+    // init Name Request todo task
+    store.state.tasks = [
+      {
+        task: {
+          todo: {
+            header: {
+              name: 'nameRequest',
+              status: 'NEW'
+            },
+            nameRequest: {
+              names: [
+                {
+                  name: 'Test Name',
+                  state: 'APPROVED'
+                }
+              ],
+              nrNumber: 'NR 1234567',
+              applicants: {
+                addrLine1: '1234 Fake Street',
+                addrLine2: 'Block 3',
+                addrLine3: 'Suite 1001',
+                city: 'Victoria',
+                countryTypeCd: 'CA',
+                postalCd: 'V9E 3S2',
+                stateProvinceCd: 'BC',
+                emailAddress: 'abc@test.com',
+                phoneNumber: '7777777777',
+                firstName: 'Adam',
+                middleName: 'John',
+                lastName: 'Smith'
+              },
+              consentFlag: null,
+              expirationDate: 'Thu, 31 Dec 2099 08:00:00 GMT',
+              state: 'APPROVED'
+            }
+          }
+        },
+        enabled: true,
+        order: 1
+      }
+    ]
+    store.state.entityStatus = 'NAME_REQUEST'
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    const vm = wrapper.vm as any
+    await Vue.nextTick()
+
+    expect(vm.taskItems.length).toEqual(1)
+
+    const button = wrapper.find('.list-item__actions .v-btn')
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.find('.v-btn__content').text()).toContain('Incorporate using this NR')
+
+    button.trigger('click')
+    await flushPromises()
+
+    // verify redirection
+    const createUrl = 'cooperatives/create/?id=T123456789'
+    expect(window.location.assign).toHaveBeenCalledWith(createUrl)
+
+    wrapper.destroy()
+  })
+
+  it('redirects to Create URL when \'Resume\' is clicked on a Named Company draft IA', async () => {
+    // init Incorporation Application filing task
+    store.state.tasks = [
+      {
+        task: {
+          filing: {
+            business: {
+              identifier: 'T123456789',
+              legalType: 'BC'
+            },
+            header: {
+              accountId: '123',
+              date: '2020-05-21T00:11:55.887740+00:00',
+              name: 'incorporationApplication',
+              status: 'DRAFT',
+              filingId: 789
+            },
+            incorporationApplication: {
+              nameRequest: {
+                nrNumber: 'NR 1234567'
+              }
+            }
+          }
+        },
+        enabled: true,
+        order: 1
+      }
+    ]
+    store.state.nameRequest = { nrNumber: 'NR 1234567' }
+    store.state.entityStatus = 'DRAFT_INCORP_APP'
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    const vm = wrapper.vm as any
+    await Vue.nextTick()
+
+    expect(vm.taskItems.length).toEqual(1)
+
+    const button = wrapper.find('.list-item__actions .v-btn')
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.find('.v-btn__content').text()).toContain('Incorporate using this NR')
+
+    button.trigger('click')
+    await flushPromises()
+
+    // verify redirection
+    const createUrl = 'cooperatives/create/?id=T123456789'
+    expect(window.location.assign).toHaveBeenCalledWith(createUrl)
+
+    wrapper.destroy()
+  })
+
+  it('redirects to Create URL when \'Resume\' is clicked on a Numbered Company draft IA', async () => {
+    // init Incorporation Application filing task
+    store.state.tasks = [
+      {
+        task: {
+          filing: {
+            business: {
+              identifier: 'T123456789',
+              legalType: 'BC'
+            },
+            header: {
+              accountId: '123',
+              date: '2020-05-21T00:11:55.887740+00:00',
+              name: 'incorporationApplication',
+              status: 'DRAFT',
+              filingId: 789
+            }
+          }
+        },
+        enabled: true,
+        order: 1
+      }
+    ]
+    store.state.nameRequest = null
+    store.state.entityStatus = 'DRAFT_INCORP_APP'
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    const vm = wrapper.vm as any
+    await Vue.nextTick()
+
+    expect(vm.taskItems.length).toEqual(1)
+
+    const button = wrapper.find('.list-item__actions .v-btn')
+    expect(button.attributes('disabled')).toBeUndefined()
+    expect(button.find('.v-btn__content').text()).toContain('Incorporate a Numbered Company')
+
+    button.trigger('click')
+    await flushPromises()
+
+    // verify redirection
+    const createUrl = 'cooperatives/create/?id=T123456789'
+    expect(window.location.assign).toHaveBeenCalledWith(createUrl)
+
+    wrapper.destroy()
   })
 })
 
 describe('TodoList - Delete Draft', () => {
   const { assign } = window.location
   let deleteCall
+
+  beforeAll(() => {
+    // mock the window.location.assign function
+    delete window.location
+    window.location = { assign: jest.fn() } as any
+  })
+
+  afterAll(() => {
+    window.location.assign = assign
+  })
 
   beforeEach(() => {
     deleteCall = sinon.stub(axios, 'delete')
@@ -1721,6 +2105,186 @@ describe('TodoList - Delete Draft', () => {
     sinon.restore()
   })
 
+  it('shows confirmation popup when \'Delete Draft\' is clicked', async () => {
+    // init store
+    sessionStorage.clear()
+    sessionStorage.setItem('BUSINESS_ID', 'CP0001191')
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'annualReport',
+              'ARFilingYear': 2019,
+              'status': 'DRAFT',
+              'filingId': 789
+            },
+            'annualReport': {
+              'annualGeneralMeetingDate': '2019-07-15',
+              'annualReportDate': '2019-07-15'
+            },
+            'changeOfAddress': {},
+            'changeOfDirectors': {}
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    await Vue.nextTick()
+
+    wrapper.find('#menu-activator').trigger('click')
+    await flushPromises()
+
+    wrapper.find('#btn-delete-draft').trigger('click')
+    await flushPromises()
+
+    // verify confirmation popup is showing
+    expect(wrapper.vm.$refs.confirm).toBeTruthy()
+
+    wrapper.destroy()
+  })
+
+  it('calls DELETE endpoint when user clicks confirmation OK', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'annualReport',
+              'ARFilingYear': 2019,
+              'status': 'DRAFT',
+              'filingId': 789
+            },
+            'annualReport': {
+              'annualGeneralMeetingDate': '2019-07-15',
+              'annualReportDate': '2019-07-15'
+            },
+            'changeOfAddress': {},
+            'changeOfDirectors': {}
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    const vm = wrapper.vm as any
+    await Vue.nextTick()
+
+    wrapper.find('#menu-activator').trigger('click')
+    await flushPromises()
+
+    wrapper.find('#btn-delete-draft').trigger('click')
+    await flushPromises()
+
+    // verify confirmation popup is showing
+    expect(vm.$refs.confirm.dialog).toBeTruthy()
+
+    // click the OK button (call the 'yes' callback function)
+    await vm.$refs.confirm.onClickYes()
+
+    // confirm that delete API was called
+    expect(deleteCall.called).toBeTruthy()
+
+    wrapper.destroy()
+  })
+
+  it('does not call DELETE endpoint when user clicks confirmation Cancel', async () => {
+    // init store
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'annualReport',
+              'ARFilingYear': 2019,
+              'status': 'DRAFT',
+              'filingId': 789
+            },
+            'annualReport': {
+              'annualGeneralMeetingDate': '2019-07-15',
+              'annualReportDate': '2019-07-15'
+            },
+            'changeOfAddress': {},
+            'changeOfDirectors': {}
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    const vm = wrapper.vm as any
+    await Vue.nextTick()
+
+    wrapper.find('#menu-activator').trigger('click')
+    await flushPromises()
+
+    wrapper.find('#btn-delete-draft').trigger('click')
+    await flushPromises()
+
+    // verify confirmation popup is showing
+    expect(vm.$refs.confirm.dialog).toBeTruthy()
+
+    // click the cancel button (call the 'cancel' callback function)
+    await vm.$refs.confirm.onClickCancel()
+
+    // confirm that delete API was not called
+    expect(deleteCall.called).toBeFalsy()
+
+    wrapper.destroy()
+  })
+
+  it('shows confirmation popup when \'Delete Incorporation Application\' is clicked', async () => {
+    // init
+    sessionStorage.clear()
+    sessionStorage.setItem('TEMP_REG_NUMBER', 'T123456789')
+    store.state.entityIncNo = 'T123456789'
+    store.state.entityType = 'BC'
+    store.state.entityStatus = 'DRAFT_INCORP_APP'
+    store.state.tasks = [
+      {
+        'task': {
+          'filing': {
+            'header': {
+              'name': 'incorporationApplication',
+              'status': 'DRAFT',
+              'filingId': 789
+            },
+            'incorporationApplication': {}
+          }
+        },
+        'enabled': true,
+        'order': 1
+      }
+    ]
+
+    const wrapper = mount(TodoList, { store, vuetify })
+    await Vue.nextTick()
+
+    wrapper.find('#menu-activator').trigger('click')
+    await flushPromises()
+
+    wrapper.find('#btn-delete-incorporation').trigger('click')
+    await flushPromises()
+
+    // verify confirmation popup is showing
+    expect(wrapper.vm.$refs.confirm).toBeTruthy()
+
+    wrapper.destroy()
+  })
+})
+
+describe('TodoList - Cancel Payment', () => {
+  const { assign } = window.location
+  let patchCall
+
   beforeAll(() => {
     // mock the window.location.assign function
     delete window.location
@@ -1730,148 +2294,6 @@ describe('TodoList - Delete Draft', () => {
   afterAll(() => {
     window.location.assign = assign
   })
-
-  // TODO: add unit test for Delete Incorporation Application (btn-delete-incorporation)
-  it('shows confirmation popup when \'Delete Draft\' is clicked', done => {
-    // init store
-    store.state.tasks = [
-      {
-        'task': {
-          'filing': {
-            'header': {
-              'name': 'annualReport',
-              'ARFilingYear': 2019,
-              'status': 'DRAFT',
-              'filingId': 789
-            },
-            'annualReport': {
-              'annualGeneralMeetingDate': '2019-07-15',
-              'annualReportDate': '2019-07-15'
-            },
-            'changeOfAddress': {},
-            'changeOfDirectors': { }
-          }
-        },
-        'enabled': true,
-        'order': 1
-      }
-    ]
-
-    const wrapper = mount(TodoList, { store, vuetify })
-    const vm = wrapper.vm as any
-
-    Vue.nextTick(async () => {
-      const button = wrapper.find('#menu-activator')
-      await button.trigger('click')
-      const button1 = wrapper.find('#btn-delete-draft')
-      await button1.trigger('click')
-      // verify confirmation popup is showing
-      expect(wrapper.vm.$refs.confirm).toBeTruthy()
-
-      await flushPromises()
-
-      done()
-    })
-  })
-
-  it('calls DELETE API call when user clicks confirmation OK', done => {
-    // init store
-    store.state.tasks = [
-      {
-        'task': {
-          'filing': {
-            'header': {
-              'name': 'annualReport',
-              'ARFilingYear': 2019,
-              'status': 'DRAFT',
-              'filingId': 789
-            },
-            'annualReport': {
-              'annualGeneralMeetingDate': '2019-07-15',
-              'annualReportDate': '2019-07-15'
-            },
-            'changeOfAddress': {},
-            'changeOfDirectors': { }
-          }
-        },
-        'enabled': true,
-        'order': 1
-      }
-    ]
-
-    const wrapper = mount(TodoList, { store, vuetify })
-    const vm = wrapper.vm as any
-
-    Vue.nextTick(async () => {
-      const button = wrapper.find('#menu-activator')
-      await button.trigger('click')
-      const button1 = wrapper.find('#btn-delete-draft')
-      await button1.trigger('click')
-      // verify confirmation popup is showing
-      expect(vm.$refs.confirm.dialog).toBeTruthy()
-
-      // click the OK button (call the 'yes' callback function)
-      await vm.$refs.confirm.onClickYes()
-
-      // confirm that delete API was called
-      expect(deleteCall.called).toBeTruthy()
-
-      wrapper.destroy()
-      done()
-    })
-  })
-
-  it('does not call DELETE API call when user clicks confirmation cancel', done => {
-    // init store
-    store.state.tasks = [
-      {
-        'task': {
-          'filing': {
-            'header': {
-              'name': 'annualReport',
-              'ARFilingYear': 2019,
-              'status': 'DRAFT',
-              'filingId': 789
-            },
-            'annualReport': {
-              'annualGeneralMeetingDate': '2019-07-15',
-              'annualReportDate': '2019-07-15'
-            },
-            'changeOfAddress': {},
-            'changeOfDirectors': { }
-          }
-        },
-        'enabled': true,
-        'order': 1
-      }
-    ]
-
-    const wrapper = mount(TodoList, { store, vuetify })
-    const vm = wrapper.vm as any
-
-    Vue.nextTick(async () => {
-      const button = wrapper.find('#menu-activator')
-      await button.trigger('click')
-      const button1 = wrapper.find('#btn-delete-draft')
-      await button1.trigger('click')
-      // verify confirmation popup is showing
-      expect(vm.$refs.confirm.dialog).toBeTruthy()
-
-      // click the cancel button (call the 'cancel' callback function)
-      await vm.$refs.confirm.onClickCancel()
-
-      // confirm that delete API was not called
-      expect(deleteCall.called).toBeFalsy()
-
-      wrapper.destroy()
-      done()
-    })
-  })
-})
-
-describe('TodoList - Cancel Payment', () => {
-  const { assign } = window.location
-  let patchCall
 
   beforeEach(() => {
     patchCall = sinon.stub(axios, 'patch')
@@ -1881,17 +2303,7 @@ describe('TodoList - Cancel Payment', () => {
     sinon.restore()
   })
 
-  beforeAll(() => {
-    // mock the window.location.assign function
-    delete window.location
-    window.location = { assign: jest.fn() } as any
-  })
-
-  afterAll(() => {
-    window.location.assign = assign
-  })
-
-  it('shows confirmation popup when \'Cancel Payment\' is clicked', done => {
+  it('shows confirmation popup when \'Cancel Payment\' is clicked', async () => {
     // init store
     store.state.tasks = [
       {
@@ -1909,7 +2321,7 @@ describe('TodoList - Cancel Payment', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1918,20 +2330,21 @@ describe('TodoList - Cancel Payment', () => {
     ]
 
     const wrapper = mount(TodoList, { store, vuetify })
-    const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      const button = wrapper.find('#pending-item-menu-activator')
-      await button.trigger('click')
-      const button1 = wrapper.find('#btn-cancel-payment')
-      await button1.trigger('click')
-      // verify confirmation popup is showing
-      expect(wrapper.vm.$refs.confirmCancelPaymentDialog).toBeTruthy()
-      done()
-    })
+    wrapper.find('#pending-item-menu-activator').trigger('click')
+    await flushPromises()
+
+    wrapper.find('#btn-cancel-payment').trigger('click')
+    await flushPromises()
+
+    // verify confirmation popup is showing
+    expect(wrapper.vm.$refs.confirmCancelPaymentDialog).toBeTruthy()
+
+    wrapper.destroy()
   })
 
-  it('calls PATCH endpoint of the API when user clicks confirmation OK', done => {
+  it('calls PATCH endpoint when user clicks confirmation OK', async () => {
     // init store
     store.state.tasks = [
       {
@@ -1949,7 +2362,7 @@ describe('TodoList - Cancel Payment', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -1959,27 +2372,27 @@ describe('TodoList - Cancel Payment', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      const button = wrapper.find('#pending-item-menu-activator')
-      await button.trigger('click')
-      const button1 = wrapper.find('#btn-cancel-payment')
-      await button1.trigger('click')
-      // verify confirmation popup is showing
-      expect(vm.$refs.confirmCancelPaymentDialog.dialog).toBeTruthy()
+    wrapper.find('#pending-item-menu-activator').trigger('click')
+    await flushPromises()
 
-      // click the OK button (call the 'yes' callback function)
-      await vm.$refs.confirmCancelPaymentDialog.onClickYes()
+    wrapper.find('#btn-cancel-payment').trigger('click')
+    await flushPromises()
 
-      // confirm that delete API was called
-      expect(patchCall.called).toBeTruthy()
+    // verify confirmation popup is showing
+    expect(vm.$refs.confirmCancelPaymentDialog.dialog).toBeTruthy()
 
-      wrapper.destroy()
-      done()
-    })
+    // click the OK button (call the 'yes' callback function)
+    await vm.$refs.confirmCancelPaymentDialog.onClickYes()
+
+    // confirm that delete API was called
+    expect(patchCall.called).toBeTruthy()
+
+    wrapper.destroy()
   })
 
-  it('does not call the PATCH endpoint when user clicks confirmation cancel', done => {
+  it('does not call the PATCH endpoint when user clicks confirmation Cancel', async () => {
     // init store
     store.state.tasks = [
       {
@@ -1997,7 +2410,7 @@ describe('TodoList - Cancel Payment', () => {
               'annualReportDate': '2019-07-15'
             },
             'changeOfAddress': {},
-            'changeOfDirectors': { }
+            'changeOfDirectors': {}
           }
         },
         'enabled': true,
@@ -2007,23 +2420,23 @@ describe('TodoList - Cancel Payment', () => {
 
     const wrapper = mount(TodoList, { store, vuetify })
     const vm = wrapper.vm as any
+    await Vue.nextTick()
 
-    Vue.nextTick(async () => {
-      const button = wrapper.find('#pending-item-menu-activator')
-      await button.trigger('click')
-      const button1 = wrapper.find('#btn-cancel-payment')
-      await button1.trigger('click')
-      // verify confirmation popup is showing
-      expect(vm.$refs.confirmCancelPaymentDialog.dialog).toBeTruthy()
+    wrapper.find('#pending-item-menu-activator').trigger('click')
+    await flushPromises()
 
-      // click the cancel button (call the 'cancel' callback function)
-      await vm.$refs.confirmCancelPaymentDialog.onClickCancel()
+    wrapper.find('#btn-cancel-payment').trigger('click')
+    await flushPromises()
 
-      // confirm that delete API was not called
-      expect(patchCall.called).toBeFalsy()
+    // verify confirmation popup is showing
+    expect(vm.$refs.confirmCancelPaymentDialog.dialog).toBeTruthy()
 
-      wrapper.destroy()
-      done()
-    })
+    // click the cancel button (call the 'cancel' callback function)
+    await vm.$refs.confirmCancelPaymentDialog.onClickCancel()
+
+    // confirm that delete API was not called
+    expect(patchCall.called).toBeFalsy()
+
+    wrapper.destroy()
   })
 })
