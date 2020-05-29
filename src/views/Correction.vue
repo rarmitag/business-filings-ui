@@ -467,6 +467,7 @@ export default {
             if (this.origFiling.business.identifier !== this.entityIncNo) throw new Error('Invalid business identifier')
             if (this.origFiling.business.legalName !== this.entityName) throw new Error('Invalid business legal name')
 
+            // throw new Error('Invalid Correction URL ${this.url}')
             // FUTURE:
             // use original Certified By name
             // this.certifiedBy = this.origFiling.header.certifiedBy || ''
