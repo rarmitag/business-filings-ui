@@ -67,7 +67,7 @@
                 </template>
                 <v-list dense>
                   <v-list-item-group color="primary">
-                    <v-list-item :disabled="hasBlockerFiling || filing.isCorrection">
+                    <v-list-item :disabled="hasBlockerFiling || filing.isCorrection ||  filing.isCorrected">
                       <v-list-item-icon>
                         <v-icon>mdi-file-document-edit-outline</v-icon>
                       </v-list-item-icon>
@@ -477,7 +477,6 @@ export default {
             params: { correctedFilingId: item.filingId } })
           break
         case FilingTypes.CHANGE_OF_ADDRESS:
-          alert('Address Correction')
           // FUTURE:
           // this.$router.push({ name: STANDALONE_ADDRESSES,
           //   params: { filingId: item.filingId, isCorrection: true } })
