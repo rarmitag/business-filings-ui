@@ -27,7 +27,7 @@ Vue.use(Affix)
 Vue.use(Vue2Filters)
 
 // main code
-async function start () {
+async function start() {
   // fetch config from environment and API
   await fetchConfig()
 
